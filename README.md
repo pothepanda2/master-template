@@ -27,9 +27,15 @@ Seed: [`sanity/seed.ts`](sanity/seed.ts)
 
 ### How content is loaded
 
-1. Browser overlay from Menu Studio (`localStorage`) so a café owner can edit immediately
-2. Sanity HTTP API, if `NEXT_PUBLIC_SANITY_PROJECT_ID` / `VITE_SANITY_PROJECT_ID` is set
-3. Seed sample content otherwise
+The live menu always serves the **newest published copy**:
+
+1. Sanity (connected project `75uw4lj0`, public `production` dataset) — café-wide source of truth
+2. The live site store (Menu Studio publishes here for every table)
+3. Seed sample content if neither is available
+
+Menu Studio (`/studio`) saves to the live site immediately. Edits in the hosted Sanity Studio also go live — whichever was saved last wins.
+
+Hosted Sanity Studio: [hashtag-cafe-menu.sanity.studio](https://hashtag-cafe-menu.sanity.studio/)
 
 ## Env vars
 
@@ -47,7 +53,15 @@ VITE_SANITY_API_VERSION=2025-01-01
 VITE_SANITY_API_READ_TOKEN=
 ```
 
-`SANITY_API_READ_TOKEN` is optional (drafts / private datasets). The public menu works without any env vars.
+`SANITY_API_READ_TOKEN` is optional (drafts / private datasets). The public `production` dataset is readable without a token.
+
+This copy is already connected:
+
+- Project ID `75uw4lj0` (Sanity project **New dark**)
+- Dataset `production`
+- Hosted Studio: https://hashtag-cafe-menu.sanity.studio/
+
+`SANITY_API_WRITE_TOKEN` (server-only, never `VITE_`) lets Menu Studio also write into Sanity. Without it, Menu Studio still publishes to every table via the live site store.
 
 ## Create a Sanity project (optional)
 

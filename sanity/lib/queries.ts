@@ -50,6 +50,7 @@ export const fullMenuQuery = /* groq */ `
 {
   "settings": ${restaurantSettingsQuery},
   "categories": ${menuCategoriesQuery},
-  "items": ${menuItemsQuery}
+  "items": ${menuItemsQuery},
+  "updatedAt": *[_type in ["restaurantSettings","menuCategory","menuItem"] && !(_id in path("drafts.**"))] | order(_updatedAt desc)[0]._updatedAt
 }
 `;

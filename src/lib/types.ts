@@ -43,6 +43,8 @@ export type MenuContent = {
   settings: RestaurantSettings;
   categories: MenuCategory[];
   items: MenuItem[];
+  /** ISO timestamp of the last publish. Used to pick the newest store. */
+  updatedAt?: string;
 };
 
 export const DIET_LABEL: Record<DietType, string> = {

@@ -64,18 +64,32 @@ async function writeBlobMenu(content: MenuContent): Promise<boolean> {
   return true;
 }
 
+function stamp(content: MenuContent): MenuContent {
+  return { ...content, updatedAt: new Date().toISOString() };
+}
+
+function newerMenu(a: MenuContent | null, b: MenuContent | null): MenuContent | null {
+  if (a && !b) return a;
+  if (b && !a) return b;
+  if (!a || !b) return null;
+  const aTime = Date.parse(a.updatedAt ?? "") || 0;
+  const bTime = Date.parse(b.updatedAt ?? "") || 0;
+  return aTime >= bTime ? a : b;
+}
+
 export async function readPublishedMenu(): Promise<MenuContent> {
+  let fromSanity: MenuContent | null = null;
   if (getSanityConfig()) {
     try {
-      const fromSanity = await fetchSanityMenuIfConfigured();
-      if (fromSanity) return fromSanity;
+      fromSanity = await fetchSanityMenuIfConfigured();
     } catch {
-      // fall through to live store / seed
+      fromSanity = null;
     }
   }
 
   const fromBlob = await readBlobMenu();
-  if (fromBlob) return fromBlob;
+  const latest = newerMenu(fromSanity, fromBlob);
+  if (latest) return latest;
 
   const fromFile = await readFileMenu();
   if (fromFile) return fromFile;
@@ -88,7 +102,7 @@ export async function writePublishedMenu(content: MenuContent): Promise<void> {
     throw new Error("Invalid menu content");
   }
 
-  const next: MenuContent = {
+  const next = stamp({
     settings: {
       ...content.settings,
       _id: content.settings._id || "restaurantSettings",
@@ -103,7 +117,7 @@ export async function writePublishedMenu(content: MenuContent): Promise<void> {
       featured: Boolean(item.featured),
       dietType: item.dietType ?? "veg",
     })),
-  };
+  });
 
   const fileOk = await writeFileMenu(next);
   const blobOk = await writeBlobMenu(next);

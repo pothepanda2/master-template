@@ -90,6 +90,7 @@ export async function fetchSanityMenuIfConfigured(): Promise<MenuContent | null>
     }
     return {
       ...result,
+      updatedAt: typeof result.updatedAt === "string" ? result.updatedAt : undefined,
       items: result.items.map((item) => ({
         ...item,
         available: item.available !== false,
