@@ -27,6 +27,11 @@ export const restaurantSettings = {
       options: { hotspot: true },
     },
     {
+      name: "logoUrl",
+      title: "Logo URL",
+      type: "string",
+    },
+    {
       name: "whatsappNumber",
       title: "WhatsApp number",
       description: "Digits with country code, e.g. 91XXXXXXXXXX. Required.",

@@ -76,6 +76,12 @@ export const menuItem = {
       options: { hotspot: true },
     },
     {
+      name: "imageUrl",
+      title: "Image URL",
+      type: "string",
+      description: "Fallback when no image is uploaded (e.g. /menu/margherita.jpg).",
+    },
+    {
       name: "available",
       title: "Available",
       type: "boolean",

@@ -1,5 +1,5 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { Link } from "@tanstack/react-router";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Link, useRouter } from "@tanstack/react-router";
 import {
   ArrowLeft,
   Plus,
@@ -12,9 +12,9 @@ import { DietBadge } from "@/components/DietBadge";
 import {
   cloneSeed,
   readStoredContent,
-  resetContent,
   saveContent,
 } from "@/lib/content";
+import { loadPublishedMenu, publishMenu } from "@/lib/menu-actions";
 import type {
   DietType,
   MenuCategory,
@@ -25,23 +25,68 @@ import type {
 import { cn, formatInr, slugify } from "@/lib/utils";
 
 type Tab = "settings" | "categories" | "items";
+type SaveState = "idle" | "saving" | "live" | "error";
 
 export function StudioApp() {
+  const router = useRouter();
   const [draft, setDraft] = useState<MenuContent>(cloneSeed);
   const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [saveState, setSaveState] = useState<SaveState>("idle");
   const [tab, setTab] = useState<Tab>("settings");
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    setDraft(readStoredContent() ?? cloneSeed());
+    let cancelled = false;
+    loadPublishedMenu()
+      .then((published) => {
+        if (cancelled) return;
+        setDraft(published);
+        saveContent(published);
+        setSaveState("live");
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setDraft(readStoredContent() ?? cloneSeed());
+      });
+    return () => {
+      cancelled = true;
+      if (timer.current) clearTimeout(timer.current);
+    };
   }, []);
 
   function persist(next: MenuContent) {
     setDraft(next);
     saveContent(next);
-    setSavedAt(
-      new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
-    );
+    setSaveState("saving");
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      publishMenu({ data: next })
+        .then(async () => {
+          setSavedAt(
+            new Date().toLocaleTimeString("en-IN", {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+          );
+          setSaveState("live");
+          await router.invalidate();
+        })
+        .catch(() => {
+          setSaveState("error");
+        });
+    }, 500);
   }
+
+  const statusLabel =
+    saveState === "saving"
+      ? "Publishing to live menu…"
+      : saveState === "live"
+        ? savedAt
+          ? `Live for all tables · ${savedAt}`
+          : "Live for all tables"
+        : saveState === "error"
+          ? "Couldn’t publish — edit again to retry"
+          : "Editing sample content";
 
   return (
     <div className="min-h-dvh bg-bg text-fg">
@@ -57,8 +102,7 @@ export function StudioApp() {
           <div className="min-w-0 flex-1">
             <p className="truncate font-display text-sm font-bold">Menu Studio</p>
             <p className="truncate text-[11px] text-muted">
-              {draft.settings.name}
-              {savedAt ? ` · Saved ${savedAt}` : " · Editing sample content"}
+              {draft.settings.name} · {statusLabel}
             </p>
           </div>
           <Link
@@ -95,11 +139,7 @@ export function StudioApp() {
           </TabButton>
           <button
             type="button"
-            onClick={() => {
-              resetContent();
-              setDraft(cloneSeed());
-              setSavedAt(null);
-            }}
+            onClick={() => persist(cloneSeed())}
             className="inline-flex min-h-11 items-center gap-2 rounded-md px-3 text-sm text-muted hover:text-fg lg:mt-4"
           >
             <RotateCcw className="size-4" />

@@ -57,13 +57,13 @@ function cloneSeed(): MenuContent {
 }
 
 /**
- * Fetch live menu content.
- * Uses Sanity when a project ID is configured, otherwise seed sample content.
- * Café-owner edits in /studio overlay this in the browser via localStorage.
+ * Fetch live menu content from Sanity.
+ * Returns null when no project is configured or the request fails —
+ * callers then fall back to the live site store / seed.
  */
-export async function getMenuData(): Promise<MenuContent> {
+export async function fetchSanityMenuIfConfigured(): Promise<MenuContent | null> {
   const config = getSanityConfig();
-  if (!config) return cloneSeed();
+  if (!config) return null;
 
   const url = new URL(
     `https://${config.projectId}.api.sanity.io/v${config.apiVersion}/data/query/${config.dataset}`,
@@ -74,8 +74,11 @@ export async function getMenuData(): Promise<MenuContent> {
   if (config.token) headers.Authorization = `Bearer ${config.token}`;
 
   try {
-    const res = await fetch(url.toString(), { headers });
-    if (!res.ok) return cloneSeed();
+    const res = await fetch(url.toString(), {
+      headers,
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
     const json = (await res.json()) as { result?: MenuContent };
     const result = json.result;
     if (
@@ -83,7 +86,7 @@ export async function getMenuData(): Promise<MenuContent> {
       !Array.isArray(result.categories) ||
       !Array.isArray(result.items)
     ) {
-      return cloneSeed();
+      return null;
     }
     return {
       ...result,
@@ -95,6 +98,10 @@ export async function getMenuData(): Promise<MenuContent> {
       })),
     };
   } catch {
-    return cloneSeed();
+    return null;
   }
+}
+
+export async function getMenuData(): Promise<MenuContent> {
+  return (await fetchSanityMenuIfConfigured()) ?? cloneSeed();
 }

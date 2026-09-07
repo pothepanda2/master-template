@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { MenuContent } from "@/lib/types";
+import { isMenuContent, type MenuContent } from "@/lib/types";
 import { SEED_MENU } from "../../sanity/seed";
 
 export const CONTENT_STORAGE_KEY = "qr-menu-content-v1";
@@ -14,11 +14,8 @@ export function readStoredContent(): MenuContent | null {
   try {
     const raw = window.localStorage.getItem(CONTENT_STORAGE_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as MenuContent;
-    if (!parsed?.settings?.name || !Array.isArray(parsed.categories) || !Array.isArray(parsed.items)) {
-      return null;
-    }
-    return parsed;
+    const parsed: unknown = JSON.parse(raw);
+    return isMenuContent(parsed) ? parsed : null;
   } catch {
     return null;
   }
@@ -26,7 +23,7 @@ export function readStoredContent(): MenuContent | null {
 
 export function saveContent(content: MenuContent) {
   window.localStorage.setItem(CONTENT_STORAGE_KEY, JSON.stringify(content));
-  window.dispatchEvent(new Event(CONTENT_EVENT));
+  window.dispatchEvent(new CustomEvent(CONTENT_EVENT, { detail: content }));
 }
 
 export function resetContent() {
@@ -38,7 +35,12 @@ export function useMenuContent(initial?: MenuContent): MenuContent {
   const [content, setContent] = useState<MenuContent>(initial ?? cloneSeed());
 
   useEffect(() => {
-    const sync = () => {
+    const sync = (event?: Event) => {
+      const detail = event instanceof CustomEvent ? event.detail : undefined;
+      if (isMenuContent(detail)) {
+        setContent(detail);
+        return;
+      }
       setContent(readStoredContent() ?? initial ?? cloneSeed());
     };
     sync();

@@ -1,9 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { MenuExperience } from "@/components/MenuExperience";
-import { getMenuData } from "../../sanity/lib/client";
+import { loadPublishedMenu } from "@/lib/menu-actions";
 
 export const Route = createFileRoute("/")({
-  loader: () => getMenuData(),
+  loader: () => loadPublishedMenu(),
+  staleTime: 0,
+  gcTime: 0,
   head: ({ loaderData }) => ({
     meta: [
       { title: loaderData?.settings.name ?? "Digital Menu" },

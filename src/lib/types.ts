@@ -52,6 +52,17 @@ export const DIET_LABEL: Record<DietType, string> = {
   egg: "Egg",
 };
 
+export function isMenuContent(value: unknown): value is MenuContent {
+  if (!value || typeof value !== "object") return false;
+  const parsed = value as MenuContent;
+  return Boolean(
+    parsed.settings?.name &&
+      typeof parsed.settings.whatsappNumber === "string" &&
+      Array.isArray(parsed.categories) &&
+      Array.isArray(parsed.items),
+  );
+}
+
 export function matchesDiet(dietType: DietType, filter: DietFilter): boolean {
   if (filter === "all") return true;
   if (filter === "veg") return dietType === "veg" || dietType === "vegan";

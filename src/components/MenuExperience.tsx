@@ -6,7 +6,8 @@ import { Header } from "@/components/Header";
 import { MenuSection } from "@/components/MenuSection";
 import { SearchBar } from "@/components/SearchBar";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
-import { useMenuContent } from "@/lib/content";
+import { useMenuContent, saveContent } from "@/lib/content";
+import { loadPublishedMenu } from "@/lib/menu-actions";
 import type { DietFilter as DietFilterValue, MenuContent } from "@/lib/types";
 import { matchesDiet, matchesQuery } from "@/lib/types";
 
@@ -18,6 +19,19 @@ export function MenuExperience({ initial }: { initial: MenuContent }) {
     content.categories[0]?._id ?? null,
   );
   const jumping = useRef(false);
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      loadPublishedMenu()
+        .then((published) => {
+          saveContent(published);
+        })
+        .catch(() => {
+          // keep showing whatever is already on screen
+        });
+    }, 20000);
+    return () => window.clearInterval(id);
+  }, []);
 
   const visible = useMemo(() => {
     const categories = [...content.categories].sort((a, b) => a.order - b.order);

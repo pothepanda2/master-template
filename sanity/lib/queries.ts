@@ -9,7 +9,7 @@ export const restaurantSettingsQuery = /* groq */ `
   _type,
   name,
   tagline,
-  "logo": logo.asset->url,
+  "logo": coalesce(logo.asset->url, logoUrl),
   whatsappNumber,
   address,
   googleMapsUrl,
@@ -39,7 +39,7 @@ export const menuItemsQuery = /* groq */ `
   price,
   description,
   dietType,
-  "image": image.asset->url,
+  "image": coalesce(image.asset->url, imageUrl),
   available,
   featured,
   order
