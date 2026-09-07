@@ -1,0 +1,16 @@
+node_modules
+dist
+.vercel
+artifacts
+screenshots
+.env
+.env.local
+.env*.local
+*.log
+.DS_Store
+.grok/og-pending
+.grok/skills
+.grok/references
+.output
+.nitro
+.cache
