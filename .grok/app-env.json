@@ -1,11 +1,5 @@
 {
   "VITE_AUTH_ENABLED": "false",
-  "VITE_SANITY_PROJECT_ID": "75uw4lj0",
-  "VITE_SANITY_DATASET": "production",
-  "VITE_SANITY_API_VERSION": "2025-01-01",
-  "NEXT_PUBLIC_SANITY_PROJECT_ID": "75uw4lj0",
-  "NEXT_PUBLIC_SANITY_DATASET": "production",
-  "NEXT_PUBLIC_SANITY_API_VERSION": "2025-01-01",
   "deploy": {
     "database": false
   }

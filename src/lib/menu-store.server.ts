@@ -1,8 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { fetchSanityMenuIfConfigured, getSanityConfig } from "../../sanity/lib/client";
-import { writeMenuToSanity } from "../../sanity/lib/write";
-import { SEED_MENU } from "../../sanity/seed";
+import { SEED_MENU } from "@/lib/seed";
 import { isMenuContent, type MenuContent } from "@/lib/types";
 
 const FILE_PATH = join(process.cwd(), "data", "menu.json");
@@ -68,28 +66,9 @@ function stamp(content: MenuContent): MenuContent {
   return { ...content, updatedAt: new Date().toISOString() };
 }
 
-function newerMenu(a: MenuContent | null, b: MenuContent | null): MenuContent | null {
-  if (a && !b) return a;
-  if (b && !a) return b;
-  if (!a || !b) return null;
-  const aTime = Date.parse(a.updatedAt ?? "") || 0;
-  const bTime = Date.parse(b.updatedAt ?? "") || 0;
-  return aTime >= bTime ? a : b;
-}
-
 export async function readPublishedMenu(): Promise<MenuContent> {
-  let fromSanity: MenuContent | null = null;
-  if (getSanityConfig()) {
-    try {
-      fromSanity = await fetchSanityMenuIfConfigured();
-    } catch {
-      fromSanity = null;
-    }
-  }
-
   const fromBlob = await readBlobMenu();
-  const latest = newerMenu(fromSanity, fromBlob);
-  if (latest) return latest;
+  if (fromBlob) return fromBlob;
 
   const fromFile = await readFileMenu();
   if (fromFile) return fromFile;
@@ -122,14 +101,7 @@ export async function writePublishedMenu(content: MenuContent): Promise<void> {
   const fileOk = await writeFileMenu(next);
   const blobOk = await writeBlobMenu(next);
 
-  let sanityOk = false;
-  try {
-    sanityOk = await writeMenuToSanity(next);
-  } catch (error) {
-    console.error("[menu] Sanity publish failed", error);
-  }
-
-  if (!fileOk && !blobOk && !sanityOk) {
+  if (!fileOk && !blobOk) {
     throw new Error("Could not publish the live menu");
   }
 }

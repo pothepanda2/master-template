@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { isMenuContent, type MenuContent } from "@/lib/types";
-import { SEED_MENU } from "../../sanity/seed";
+import { SEED_MENU } from "@/lib/seed";
 
 export const CONTENT_STORAGE_KEY = "qr-menu-content-v1";
 export const CONTENT_EVENT = "qr-menu-content-changed";

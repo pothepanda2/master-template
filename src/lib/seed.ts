@@ -2,8 +2,8 @@ import type { MenuContent } from "@/lib/types";
 
 /**
  * Sample content for the first client. Components never hardcode this café —
- * they only read MenuContent. Duplicate the repo, change this seed (or Studio
- * / Sanity), and the live site is a new café.
+ * they only read MenuContent. Duplicate the repo, change this seed (or Studio),
+ * and the live site is a new café.
  */
 export const SEED_MENU: MenuContent = {
   settings: {

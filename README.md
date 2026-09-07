@@ -1,86 +1,42 @@
 # Café QR digital menu
 
-A table QR menu website. Guests land on the **menu** — search, diet filters, sticky category tabs, WhatsApp. Café owners edit content in **Menu Studio** (`/studio`) or a connected Sanity project.
+A table QR menu website. Guests land on the **menu** — search, diet filters, sticky category tabs, WhatsApp. Café owners edit everything in **Menu Studio** (`/studio`). There is no separate CMS.
 
-Sample content is **The Hashtag Cafe** (Nagole, Hyderabad). Components never hardcode the café name; only seed / CMS content does. Duplicate this repo, change content + env vars, and it is a new café.
+Sample content is **The Hashtag Cafe** (Nagole, Hyderabad). Components never hardcode the café name; only seed / Studio content does. Duplicate this repo, change content in Studio (or `src/lib/seed.ts`), and it is a new café.
 
 ## Pages
 
 | Path | What it is |
 | --- | --- |
 | `/` | Digital menu (the product) |
-| `/studio` | Café-owner CMS: settings, categories, items grouped by category, veg / non-veg preview |
+| `/studio` | Café-owner editor: settings, categories, items grouped by category, veg / non-veg preview |
 
 No marketing pages.
 
+## How edits go live
+
+1. Open Menu Studio
+2. Change a price, hide a dish, add an item, or update café details
+3. It saves
+4. Every table QR shows the new menu
+
+The live site store is the source of truth. Until the first Studio save, the site shows the seed menu.
+
 ## Content model
 
-Document types live in [`sanity/schema`](sanity/schema):
+Defined in [`src/lib/types.ts`](src/lib/types.ts), seeded in [`src/lib/seed.ts`](src/lib/seed.ts):
 
-1. **restaurantSettings** (singleton) — name, tagline, logo, WhatsApp number, address, Google Maps URL, hours, Instagram
-2. **menuCategory** — title, slug, order, optional icon
-3. **menuItem** — name, slug, category, price (INR), description, diet (`veg` \| `nonveg` \| `vegan` \| `egg`), image, available, featured, order
-
-GROQ queries: [`sanity/lib/queries.ts`](sanity/lib/queries.ts)  
-Client: [`sanity/lib/client.ts`](sanity/lib/client.ts)  
-Seed: [`sanity/seed.ts`](sanity/seed.ts)
-
-### How content is loaded
-
-The live menu always serves the **newest published copy**:
-
-1. Sanity (connected project `75uw4lj0`, public `production` dataset) — café-wide source of truth
-2. The live site store (Menu Studio publishes here for every table)
-3. Seed sample content if neither is available
-
-Menu Studio (`/studio`) saves to the live site immediately. Edits in the hosted Sanity Studio also go live — whichever was saved last wins.
-
-Hosted Sanity Studio: [hashtag-cafe-menu.sanity.studio](https://hashtag-cafe-menu.sanity.studio/)
-
-## Env vars
-
-Copy [`.env.example`](.env.example):
-
-```
-NEXT_PUBLIC_SANITY_PROJECT_ID=
-NEXT_PUBLIC_SANITY_DATASET=production
-NEXT_PUBLIC_SANITY_API_VERSION=2025-01-01
-SANITY_API_READ_TOKEN=
-
-VITE_SANITY_PROJECT_ID=
-VITE_SANITY_DATASET=production
-VITE_SANITY_API_VERSION=2025-01-01
-VITE_SANITY_API_READ_TOKEN=
-```
-
-`SANITY_API_READ_TOKEN` is optional (drafts / private datasets). The public `production` dataset is readable without a token.
-
-This copy is already connected:
-
-- Project ID `75uw4lj0` (Sanity project **New dark**)
-- Dataset `production`
-- Hosted Studio: https://hashtag-cafe-menu.sanity.studio/
-
-`SANITY_API_WRITE_TOKEN` (server-only, never `VITE_`) lets Menu Studio also write into Sanity. Without it, Menu Studio still publishes to every table via the live site store.
-
-## Create a Sanity project (optional)
-
-1. [Create a Sanity project](https://www.sanity.io/manage)
-2. Add the schema files under `sanity/schema` to that Studio (`defineType` wrappers)
-3. Create a singleton **restaurantSettings** document
-4. Paste the project ID into the env vars above
-5. Deploy. Menu edits in Sanity show on the next fetch (client falls back to seed if the request fails)
-
-Until then, use `/studio` in this app. It is built for a café owner: Settings first, then Categories, then Menu items grouped by category with veg / non-veg marks and an available toggle.
+1. **Settings** — name, tagline, logo, WhatsApp number, address, Google Maps URL, hours, Instagram
+2. **Category** — title, slug, order
+3. **Item** — name, slug, category, price (INR), description, diet (`veg` \| `nonveg` \| `vegan` \| `egg`), image, available, featured, order
 
 ## Duplicate for a new café
 
 1. Clone / copy this repo
-2. Open `/studio` (or edit `sanity/seed.ts`)
+2. Open `/studio` (or edit `src/lib/seed.ts`)
 3. Change name, WhatsApp (digits with country code, e.g. `91XXXXXXXXXX`), address, maps URL, hours
 4. Replace categories and items
-5. Point env vars at a new Sanity dataset if you use one
-6. Deploy. Do not change component code.
+5. Deploy. Do not change component code.
 
 ## GitHub
 
@@ -98,11 +54,8 @@ git push -u origin main
 1. Push the repo to GitHub
 2. New Netlify site from that repo
 3. Build command: `npm run build`
-4. Publish directory: `dist` (Vite / Nitro output)
-5. Site env vars — same keys as `.env.example`
-6. Trigger a deploy
-
-If you later wrap this content layer in a Next.js App Router app, keep the same schema, GROQ, and component names (`Header`, `WhatsAppButton`, `CategoryNav`, `SearchBar`, `DietFilter`, `MenuSection`, `MenuItemCard`, `Footer`). Revalidation: tag `menu` and call `revalidateTag('menu')` from a Sanity webhook.
+4. Publish directory: `dist`
+5. Trigger a deploy
 
 ## WhatsApp
 

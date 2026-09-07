@@ -43,7 +43,7 @@ export type MenuContent = {
   settings: RestaurantSettings;
   categories: MenuCategory[];
   items: MenuItem[];
-  /** ISO timestamp of the last publish. Used to pick the newest store. */
+  /** ISO timestamp of the last Menu Studio publish. */
   updatedAt?: string;
 };
 
