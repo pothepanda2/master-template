@@ -1,20 +1,35 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { Link, useRouter } from "@tanstack/react-router";
 import {
   ArrowLeft,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  ChevronUp,
+  Lock,
   Plus,
   RotateCcw,
-  Settings,
+  Search,
   Trash2,
-  UtensilsCrossed,
+  Upload,
 } from "lucide-react";
 import { DietBadge } from "@/components/DietBadge";
+import { PinLock } from "@/components/studio/PinLock";
+import { cloneSeed, saveContent } from "@/lib/content";
 import {
-  cloneSeed,
-  readStoredContent,
-  saveContent,
-} from "@/lib/content";
-import { loadPublishedMenu, publishMenu } from "@/lib/menu-actions";
+  changeStudioPin,
+  checkStudioToken,
+  loadPublishedMenu,
+  publishMenu,
+  setupStudioPin,
+  studioStatus,
+  unlockStudio,
+} from "@/lib/menu-actions";
+import {
+  clearStudioToken,
+  readStudioToken,
+  writeStudioToken,
+} from "@/lib/studio-session";
 import type {
   DietType,
   MenuCategory,
@@ -22,157 +37,500 @@ import type {
   MenuItem,
   RestaurantSettings,
 } from "@/lib/types";
+import { DIET_LABEL } from "@/lib/types";
 import { cn, formatInr, slugify } from "@/lib/utils";
 
-type Tab = "settings" | "categories" | "items";
-type SaveState = "idle" | "saving" | "live" | "error";
+type Tab = "menu" | "categories" | "cafe";
+type Gate = "loading" | "setup" | "lock" | "open";
+type SaveState = "idle" | "publishing" | "live" | "error";
+
+const inputClass =
+  "h-11 w-full rounded-md bg-surface-2 px-3 text-sm text-fg shadow-[var(--shadow-border)] placeholder:text-subtle focus:shadow-[var(--shadow-border-hover)] focus:outline-none";
+const areaClass =
+  "w-full rounded-md bg-surface-2 px-3 py-2.5 text-sm text-fg shadow-[var(--shadow-border)] placeholder:text-subtle focus:shadow-[var(--shadow-border-hover)] focus:outline-none";
+
+function snapshot(content: MenuContent): string {
+  return JSON.stringify({
+    settings: content.settings,
+    categories: content.categories,
+    items: content.items,
+  });
+}
 
 export function StudioApp() {
   const router = useRouter();
+  const [gate, setGate] = useState<Gate>("loading");
+  const [token, setToken] = useState("");
+  const [pinError, setPinError] = useState<string | null>(null);
+  const [pinBusy, setPinBusy] = useState(false);
   const [draft, setDraft] = useState<MenuContent>(cloneSeed);
+  const [baseline, setBaseline] = useState("");
+  const [tab, setTab] = useState<Tab>("menu");
+  const [saveState, setSaveState] = useState<SaveState>("live");
   const [savedAt, setSavedAt] = useState<string | null>(null);
-  const [saveState, setSaveState] = useState<SaveState>("idle");
-  const [tab, setTab] = useState<Tab>("settings");
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [filterCat, setFilterCat] = useState("all");
+  const [pinBusyChange, setPinBusyChange] = useState(false);
+  const [pinChangeMsg, setPinChangeMsg] = useState<string | null>(null);
+
+  const dirty = snapshot(draft) !== baseline;
+  const cafeName = draft.settings.name || "your café";
 
   useEffect(() => {
     let cancelled = false;
-    loadPublishedMenu()
-      .then((published) => {
+    (async () => {
+      try {
+        const [published, status] = await Promise.all([
+          loadPublishedMenu(),
+          studioStatus(),
+        ]);
         if (cancelled) return;
         setDraft(published);
-        saveContent(published);
-        setSaveState("live");
-      })
-      .catch(() => {
+        setBaseline(snapshot(published));
+        const existing = readStudioToken();
+        if (existing) {
+          const check = await checkStudioToken({ data: { token: existing } });
+          if (cancelled) return;
+          if (check.ok) {
+            setToken(existing);
+            setGate("open");
+            return;
+          }
+          clearStudioToken();
+        }
+        setGate(status.hasPin ? "lock" : "setup");
+      } catch {
         if (cancelled) return;
-        setDraft(readStoredContent() ?? cloneSeed());
-      });
+        setDraft(cloneSeed());
+        setGate("setup");
+      }
+    })();
     return () => {
       cancelled = true;
-      if (timer.current) clearTimeout(timer.current);
     };
   }, []);
 
-  function persist(next: MenuContent) {
+  function rememberToken(next: string) {
+    writeStudioToken(next);
+    setToken(next);
+    setGate("open");
+    setPinError(null);
+  }
+
+  async function handlePin(pin: string) {
+    if (pin.length !== 4) return;
+    setPinBusy(true);
+    setPinError(null);
+    try {
+      if (gate === "setup") {
+        const result = await setupStudioPin({ data: { pin } });
+        rememberToken(result.token);
+      } else {
+        const result = await unlockStudio({ data: { pin } });
+        rememberToken(result.token);
+      }
+    } catch (error) {
+      setPinError(error instanceof Error ? error.message : "Wrong PIN");
+    } finally {
+      setPinBusy(false);
+    }
+  }
+
+  function patchDraft(next: MenuContent) {
     setDraft(next);
-    saveContent(next);
-    setSaveState("saving");
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => {
-      publishMenu({ data: next })
-        .then(async () => {
-          setSavedAt(
-            new Date().toLocaleTimeString("en-IN", {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
-          );
-          setSaveState("live");
-          await router.invalidate();
-        })
-        .catch(() => {
-          setSaveState("error");
-        });
-    }, 500);
+    setSaveState("idle");
+  }
+
+  async function publish() {
+    if (!dirty || saveState === "publishing") return;
+    const unnamed = draft.items.filter((item) => !item.name.trim());
+    if (unnamed.length > 0) {
+      setEditingId(unnamed[0]._id);
+      setTab("menu");
+      setSaveState("error");
+      return;
+    }
+    if (!draft.settings.name.trim() || !draft.settings.whatsappNumber.trim()) {
+      setTab("cafe");
+      setSaveState("error");
+      return;
+    }
+    setSaveState("publishing");
+    try {
+      await publishMenu({ data: { menu: draft, token } });
+      saveContent(draft);
+      setBaseline(snapshot(draft));
+      setSavedAt(
+        new Date().toLocaleTimeString("en-IN", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      );
+      setSaveState("live");
+      await router.invalidate();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      if (message.includes("locked")) {
+        clearStudioToken();
+        setToken("");
+        setGate("lock");
+        setPinError("Enter your PIN again");
+      }
+      setSaveState("error");
+    }
+  }
+
+  function lock() {
+    clearStudioToken();
+    setToken("");
+    setGate("lock");
+    setPinError(null);
+  }
+
+  async function updatePin(pin: string) {
+    setPinBusyChange(true);
+    setPinChangeMsg(null);
+    try {
+      const result = await changeStudioPin({ data: { pin, token } });
+      rememberToken(result.token);
+      setPinChangeMsg("PIN updated");
+    } catch (error) {
+      setPinChangeMsg(error instanceof Error ? error.message : "Could not update PIN");
+    } finally {
+      setPinBusyChange(false);
+    }
+  }
+
+  if (gate === "loading") {
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-bg text-muted">
+        Opening Menu Studio…
+      </div>
+    );
+  }
+
+  if (gate === "setup" || gate === "lock") {
+    return (
+      <PinLock
+        mode={gate === "setup" ? "setup" : "unlock"}
+        cafeName={cafeName}
+        error={pinError}
+        busy={pinBusy}
+        onSubmit={handlePin}
+      />
+    );
   }
 
   const statusLabel =
-    saveState === "saving"
-      ? "Publishing to live menu…"
-      : saveState === "live"
-        ? savedAt
-          ? `Live for all tables · ${savedAt}`
-          : "Live for all tables"
-        : saveState === "error"
-          ? "Couldn’t publish — edit again to retry"
-          : "Editing sample content";
+    saveState === "publishing"
+      ? "Publishing…"
+      : saveState === "error"
+        ? dirty
+          ? "Couldn’t publish — try again"
+          : "Name every dish before publishing"
+        : dirty
+          ? "Unsaved changes"
+          : savedAt
+            ? `Live · ${savedAt}`
+            : "Live for all tables";
 
   return (
     <div className="min-h-dvh bg-bg text-fg">
-      <header className="sticky top-0 z-20 border-b border-line bg-bg pt-[env(safe-area-inset-top)]">
-        <div className="mx-auto flex h-14 max-w-5xl items-center gap-3 px-4">
+      <header className="sticky top-0 z-20 border-b border-line bg-bg/95 pt-[env(safe-area-inset-top)] backdrop-blur-sm">
+        <div className="mx-auto flex h-14 max-w-5xl items-center gap-2 px-3 sm:px-4">
           <Link
             to="/"
-            className="flex size-10 items-center justify-center rounded-sm text-muted hover:text-fg"
+            className="flex size-10 shrink-0 items-center justify-center rounded-sm text-muted hover:text-fg"
             aria-label="Back to menu"
           >
             <ArrowLeft className="size-5" />
           </Link>
           <div className="min-w-0 flex-1">
             <p className="truncate font-display text-sm font-bold">Menu Studio</p>
-            <p className="truncate text-[11px] text-muted">
-              {draft.settings.name} · {statusLabel}
-            </p>
+            <p className="truncate text-xs text-muted">{statusLabel}</p>
           </div>
-          <Link
-            to="/"
-            className="inline-flex min-h-10 items-center rounded-md bg-lime px-3 text-sm font-semibold text-lime-fg"
-          >
-            View menu
-          </Link>
-        </div>
-      </header>
-
-      <div className="mx-auto grid max-w-5xl gap-6 px-4 py-5 lg:grid-cols-[220px_1fr]">
-        <nav className="no-scrollbar flex gap-1 overflow-x-auto lg:flex-col">
-          <TabButton
-            active={tab === "settings"}
-            onClick={() => setTab("settings")}
-            icon={<Settings className="size-4" />}
-          >
-            Settings
-          </TabButton>
-          <TabButton
-            active={tab === "categories"}
-            onClick={() => setTab("categories")}
-            icon={<UtensilsCrossed className="size-4" />}
-          >
-            Categories
-          </TabButton>
-          <TabButton
-            active={tab === "items"}
-            onClick={() => setTab("items")}
-            icon={<Plus className="size-4" />}
-          >
-            Menu items
-          </TabButton>
           <button
             type="button"
-            onClick={() => persist(cloneSeed())}
-            className="inline-flex min-h-11 items-center gap-2 rounded-md px-3 text-sm text-muted hover:text-fg lg:mt-4"
+            onClick={lock}
+            className="flex size-10 shrink-0 items-center justify-center rounded-md text-muted hover:bg-surface hover:text-fg"
+            aria-label="Lock studio"
           >
-            <RotateCcw className="size-4" />
-            Reset sample
+            <Lock className="size-4" />
           </button>
-        </nav>
-
-        <div className="pb-16">
-          {tab === "settings" ? (
-            <SettingsForm
-              settings={draft.settings}
-              onChange={(settings) => persist({ ...draft, settings })}
-            />
-          ) : null}
-          {tab === "categories" ? (
-            <CategoriesEditor content={draft} onChange={persist} />
-          ) : null}
-          {tab === "items" ? <ItemsEditor content={draft} onChange={persist} /> : null}
+          <button
+            type="button"
+            onClick={publish}
+            disabled={!dirty || saveState === "publishing"}
+            className="inline-flex min-h-10 items-center gap-1.5 rounded-md bg-lime px-3 text-sm font-semibold text-lime-fg disabled:opacity-40"
+          >
+            {saveState === "publishing" ? (
+              "Publishing"
+            ) : (
+              <>
+                <Upload className="size-4" />
+                Publish
+              </>
+            )}
+          </button>
         </div>
+        <nav className="mx-auto flex max-w-5xl gap-1 px-3 pb-2 sm:px-4">
+          {(
+            [
+              ["menu", "Dishes"],
+              ["categories", "Categories"],
+              ["cafe", "Café"],
+            ] as const
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setTab(id)}
+              className={cn(
+                "min-h-10 flex-1 rounded-md px-3 text-sm font-semibold",
+                tab === id ? "bg-lime text-lime-fg" : "text-muted hover:bg-surface hover:text-fg",
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </nav>
+      </header>
+
+      <div className="mx-auto max-w-5xl px-3 py-4 pb-24 sm:px-4">
+        {tab === "menu" ? (
+          <MenuPanel
+            content={draft}
+            query={query}
+            filterCat={filterCat}
+            editingId={editingId}
+            onQuery={setQuery}
+            onFilter={setFilterCat}
+            onEdit={setEditingId}
+            onChange={patchDraft}
+          />
+        ) : null}
+        {tab === "categories" ? (
+          <CategoriesPanel content={draft} onChange={patchDraft} />
+        ) : null}
+        {tab === "cafe" ? (
+          <CafePanel
+            content={draft}
+            onChange={patchDraft}
+            pinBusy={pinBusyChange}
+            pinMessage={pinChangeMsg}
+            onChangePin={updatePin}
+            onReset={() => {
+              const next = cloneSeed();
+              patchDraft(next);
+              setEditingId(null);
+            }}
+          />
+        ) : null}
       </div>
     </div>
   );
 }
 
-function TabButton({
+function MenuPanel({
+  content,
+  query,
+  filterCat,
+  editingId,
+  onQuery,
+  onFilter,
+  onEdit,
+  onChange,
+}: {
+  content: MenuContent;
+  query: string;
+  filterCat: string;
+  editingId: string | null;
+  onQuery: (value: string) => void;
+  onFilter: (value: string) => void;
+  onEdit: (id: string | null) => void;
+  onChange: (content: MenuContent) => void;
+}) {
+  const nameRef = useRef<HTMLInputElement>(null);
+  const categories = [...content.categories].sort((a, b) => a.order - b.order);
+  const editing = content.items.find((item) => item._id === editingId) ?? null;
+
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return content.items
+      .filter((item) => (filterCat === "all" ? true : item.categoryId === filterCat))
+      .filter((item) => {
+        if (!q) return true;
+        return (
+          item.name.toLowerCase().includes(q) ||
+          (item.description ?? "").toLowerCase().includes(q)
+        );
+      })
+      .sort((a, b) => {
+        if (filterCat === "all") {
+          const left = categories.findIndex((category) => category._id === a.categoryId);
+          const right = categories.findIndex((category) => category._id === b.categoryId);
+          if (left !== right) return left - right;
+        }
+        return a.order - b.order || a.name.localeCompare(b.name);
+      });
+  }, [content.items, content.categories, filterCat, query]);
+
+  useEffect(() => {
+    if (editingId && nameRef.current) nameRef.current.focus();
+  }, [editingId]);
+
+  function addDish() {
+    const categoryId =
+      filterCat !== "all" ? filterCat : (categories[0]?._id ?? "");
+    if (!categoryId) return;
+    const order = content.items.filter((item) => item.categoryId === categoryId).length + 1;
+    const item: MenuItem = {
+      _id: `item-${Date.now()}`,
+      _type: "menuItem",
+      name: "",
+      slug: `dish-${order}`,
+      categoryId,
+      price: 0,
+      dietType: "veg",
+      available: true,
+      featured: false,
+      order,
+    };
+    onChange({ ...content, items: [...content.items, item] });
+    onEdit(item._id);
+    onFilter(categoryId);
+    onQuery("");
+  }
+
+  function updateItem(id: string, partial: Partial<MenuItem>) {
+    onChange({
+      ...content,
+      items: content.items.map((item) => (item._id === id ? { ...item, ...partial } : item)),
+    });
+  }
+
+  function removeItem(id: string) {
+    onChange({ ...content, items: content.items.filter((item) => item._id !== id) });
+    if (editingId === id) onEdit(null);
+  }
+
+  return (
+    <div className="flex flex-col-reverse gap-4 lg:grid lg:grid-cols-[1fr_22rem] lg:items-start lg:gap-6">
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h1 className="font-display text-2xl font-bold tracking-tight">Dishes</h1>
+            <p className="text-sm text-muted">Add or edit, then tap Publish.</p>
+          </div>
+          <button
+            type="button"
+            onClick={addDish}
+            disabled={categories.length === 0}
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-md bg-lime px-3 text-sm font-semibold text-lime-fg disabled:opacity-40"
+          >
+            <Plus className="size-4" />
+            Add dish
+          </button>
+        </div>
+
+        <label className="relative block">
+          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-subtle" />
+          <input
+            className={cn(inputClass, "pl-10")}
+            value={query}
+            onChange={(e) => onQuery(e.target.value)}
+            placeholder="Search dishes"
+          />
+        </label>
+
+        <div className="no-scrollbar -mx-3 flex gap-1.5 overflow-x-auto px-3">
+          <Chip active={filterCat === "all"} onClick={() => onFilter("all")}>
+            All
+          </Chip>
+          {categories.map((category) => (
+            <Chip
+              key={category._id}
+              active={filterCat === category._id}
+              onClick={() => onFilter(category._id)}
+            >
+              {category.title}
+            </Chip>
+          ))}
+        </div>
+
+        {categories.length === 0 ? (
+          <p className="rounded-xl bg-surface p-4 text-sm text-muted shadow-[var(--shadow-border)]">
+            Add a category first, then add dishes.
+          </p>
+        ) : visible.length === 0 ? (
+          <p className="rounded-xl bg-surface p-4 text-sm text-muted shadow-[var(--shadow-border)]">
+            No dishes here yet. Tap Add dish.
+          </p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {visible.map((item) => {
+              const open = editingId === item._id;
+              return (
+                <li key={item._id}>
+                  <button
+                    type="button"
+                    onClick={() => onEdit(open ? null : item._id)}
+                    className={cn(
+                      "flex w-full items-center gap-3 rounded-xl bg-surface p-3 text-left shadow-[var(--shadow-border)]",
+                      open && "shadow-[var(--shadow-border-hover)]",
+                      !item.available && "opacity-60",
+                    )}
+                  >
+                    <DietBadge diet={item.dietType} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-semibold">
+                        {item.name.trim() || "Untitled dish"}
+                      </span>
+                      <span className="text-xs text-muted">
+                        {formatInr(item.price)}
+                        {item.available ? "" : " · Hidden"}
+                        {item.featured ? " · Popular" : ""}
+                      </span>
+                    </span>
+                    <ChevronRight
+                      className={cn("size-4 text-subtle transition-transform", open && "rotate-90")}
+                    />
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+
+      <aside className="lg:sticky lg:top-32">
+        {editing ? (
+          <DishEditor
+            item={editing}
+            categories={categories}
+            nameRef={nameRef}
+            onChange={(partial) => updateItem(editing._id, partial)}
+            onDelete={() => removeItem(editing._id)}
+            onDone={() => onEdit(null)}
+          />
+        ) : (
+          <div className="rounded-xl bg-surface p-5 text-sm text-muted shadow-[var(--shadow-border)]">
+            Tap a dish to edit, or add a new one. Nothing goes live until you publish.
+          </div>
+        )}
+      </aside>
+    </div>
+  );
+}
+
+function Chip({
   active,
   onClick,
-  icon,
   children,
 }: {
   active: boolean;
   onClick: () => void;
-  icon: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -180,11 +538,10 @@ function TabButton({
       type="button"
       onClick={onClick}
       className={cn(
-        "inline-flex min-h-11 shrink-0 items-center gap-2 rounded-md px-3 text-sm font-semibold",
-        active ? "bg-lime text-lime-fg" : "text-muted hover:bg-surface hover:text-fg",
+        "inline-flex h-10 shrink-0 items-center rounded-pill px-3 text-sm font-semibold",
+        active ? "bg-lime text-lime-fg" : "bg-surface text-muted shadow-[var(--shadow-border)]",
       )}
     >
-      {icon}
       {children}
     </button>
   );
@@ -201,28 +558,340 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-const inputClass =
-  "h-11 w-full rounded-md bg-surface-2 px-3 text-sm text-fg shadow-[var(--shadow-border)] placeholder:text-subtle focus:shadow-[var(--shadow-border-hover)] focus:outline-none";
-const areaClass =
-  "w-full rounded-md bg-surface-2 px-3 py-2.5 text-sm text-fg shadow-[var(--shadow-border)] placeholder:text-subtle focus:shadow-[var(--shadow-border-hover)] focus:outline-none";
-
-function SettingsForm({
-  settings,
+function DishEditor({
+  item,
+  categories,
+  nameRef,
   onChange,
+  onDelete,
+  onDone,
 }: {
-  settings: RestaurantSettings;
-  onChange: (settings: RestaurantSettings) => void;
+  item: MenuItem;
+  categories: MenuCategory[];
+  nameRef: RefObject<HTMLInputElement | null>;
+  onChange: (partial: Partial<MenuItem>) => void;
+  onDelete: () => void;
+  onDone: () => void;
 }) {
-  function patch(partial: Partial<RestaurantSettings>) {
-    onChange({ ...settings, ...partial });
+  const [priceText, setPriceText] = useState(
+    item.price === 0 && !item.name ? "" : String(item.price),
+  );
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  useEffect(() => {
+    setPriceText(item.price === 0 && !item.name.trim() ? "" : String(item.price));
+    setConfirmDelete(false);
+  }, [item._id]);
+
+  function setPrice(text: string) {
+    const cleaned = text.replace(/[^\d]/g, "");
+    setPriceText(cleaned);
+    onChange({ price: cleaned === "" ? 0 : Number(cleaned) });
   }
 
   return (
-    <form className="flex max-w-xl flex-col gap-4" onSubmit={(e) => e.preventDefault()}>
-      <h1 className="font-display text-2xl font-bold tracking-tight">Café settings</h1>
+    <div className="flex flex-col gap-3 rounded-xl bg-surface p-4 shadow-[var(--shadow-border)]">
+      <div className="flex items-center justify-between gap-2">
+        <p className="font-display text-lg font-bold">
+          {item.name.trim() || "New dish"}
+        </p>
+        <button
+          type="button"
+          onClick={onDone}
+          className="inline-flex min-h-10 items-center gap-1 rounded-md px-2 text-sm font-semibold text-lime"
+        >
+          <Check className="size-4" />
+          Done
+        </button>
+      </div>
+      <Field label="Name">
+        <input
+          ref={nameRef}
+          className={inputClass}
+          value={item.name}
+          placeholder="e.g. Margherita"
+          onChange={(e) => {
+            const name = e.target.value;
+            onChange({ name, slug: slugify(name) || item.slug });
+          }}
+        />
+      </Field>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Price (INR)">
+          <input
+            className={inputClass}
+            inputMode="numeric"
+            value={priceText}
+            placeholder="0"
+            onChange={(e) => setPrice(e.target.value)}
+          />
+        </Field>
+        <Field label="Category">
+          <select
+            className={inputClass}
+            value={item.categoryId}
+            onChange={(e) => onChange({ categoryId: e.target.value })}
+          >
+            {categories.map((category) => (
+              <option key={category._id} value={category._id}>
+                {category.title}
+              </option>
+            ))}
+          </select>
+        </Field>
+      </div>
+      <div>
+        <p className="mb-1.5 text-xs font-semibold tracking-wide text-muted uppercase">Diet</p>
+        <div className="grid grid-cols-4 gap-1.5">
+          {(["veg", "nonveg", "vegan", "egg"] as DietType[]).map((diet) => (
+            <button
+              key={diet}
+              type="button"
+              onClick={() => onChange({ dietType: diet })}
+              className={cn(
+                "inline-flex min-h-11 flex-col items-center justify-center gap-1 rounded-md text-xs font-semibold",
+                item.dietType === diet
+                  ? "bg-lime text-lime-fg"
+                  : "bg-surface-2 text-muted",
+              )}
+            >
+              <DietBadge diet={diet} />
+              {DIET_LABEL[diet]}
+            </button>
+          ))}
+        </div>
+      </div>
+      <Field label="Description">
+        <textarea
+          className={areaClass}
+          rows={2}
+          value={item.description ?? ""}
+          placeholder="Short line guests will read"
+          onChange={(e) => onChange({ description: e.target.value })}
+        />
+      </Field>
+      <Field label="Photo URL (optional)">
+        <input
+          className={inputClass}
+          value={item.image ?? ""}
+          placeholder="/menu/photo.jpg"
+          onChange={(e) => onChange({ image: e.target.value })}
+        />
+      </Field>
+      <div className="flex gap-2">
+        <Toggle
+          label={item.available ? "On the menu" : "Hidden"}
+          checked={item.available}
+          onChange={(available) => onChange({ available })}
+        />
+        <Toggle
+          label="Popular"
+          checked={item.featured}
+          onChange={(featured) => onChange({ featured })}
+        />
+      </div>
+      {confirmDelete ? (
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={onDelete}
+            className="inline-flex min-h-11 flex-1 items-center justify-center rounded-md bg-red px-3 text-sm font-semibold text-fg"
+          >
+            Delete dish
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirmDelete(false)}
+            className="inline-flex min-h-11 flex-1 items-center justify-center rounded-md bg-surface-2 px-3 text-sm font-semibold"
+          >
+            Keep
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setConfirmDelete(true)}
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md text-sm font-semibold text-muted hover:text-red"
+        >
+          <Trash2 className="size-4" />
+          Remove dish
+        </button>
+      )}
+    </div>
+  );
+}
+
+function Toggle({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (value: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      className={cn(
+        "inline-flex min-h-11 flex-1 items-center justify-center rounded-md px-3 text-sm font-semibold",
+        checked ? "bg-lime text-lime-fg" : "bg-surface-2 text-muted",
+      )}
+    >
+      {label}
+    </button>
+  );
+}
+
+function CategoriesPanel({
+  content,
+  onChange,
+}: {
+  content: MenuContent;
+  onChange: (content: MenuContent) => void;
+}) {
+  const categories = [...content.categories].sort((a, b) => a.order - b.order);
+
+  function update(id: string, partial: Partial<MenuCategory>) {
+    onChange({
+      ...content,
+      categories: content.categories.map((category) =>
+        category._id === id ? { ...category, ...partial } : category,
+      ),
+    });
+  }
+
+  function move(id: string, direction: -1 | 1) {
+    const index = categories.findIndex((category) => category._id === id);
+    const swap = index + direction;
+    if (index < 0 || swap < 0 || swap >= categories.length) return;
+    const next = [...categories];
+    const [row] = next.splice(index, 1);
+    next.splice(swap, 0, row);
+    onChange({
+      ...content,
+      categories: next.map((category, order) => ({ ...category, order: order + 1 })),
+    });
+  }
+
+  function add() {
+    const order = categories.length + 1;
+    const category: MenuCategory = {
+      _id: `cat-${Date.now()}`,
+      _type: "menuCategory",
+      title: "",
+      slug: `category-${order}`,
+      order,
+    };
+    onChange({ ...content, categories: [...content.categories, category] });
+  }
+
+  function remove(id: string) {
+    onChange({
+      ...content,
+      categories: content.categories.filter((category) => category._id !== id),
+      items: content.items.filter((item) => item.categoryId !== id),
+    });
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h1 className="font-display text-2xl font-bold tracking-tight">Categories</h1>
+          <p className="text-sm text-muted">Pizza, drinks, desserts — the tabs on the QR menu.</p>
+        </div>
+        <button
+          type="button"
+          onClick={add}
+          className="inline-flex min-h-11 items-center gap-1.5 rounded-md bg-lime px-3 text-sm font-semibold text-lime-fg"
+        >
+          <Plus className="size-4" />
+          Add
+        </button>
+      </div>
+      <ul className="flex flex-col gap-2">
+        {categories.map((category, index) => {
+          const count = content.items.filter((item) => item.categoryId === category._id).length;
+          return (
+            <li key={category._id} className="rounded-xl bg-surface p-3 shadow-[var(--shadow-border)]">
+              <div className="flex items-center gap-2">
+                <input
+                  className={inputClass}
+                  value={category.title}
+                  placeholder="Category name"
+                  onChange={(e) => {
+                    const title = e.target.value;
+                    update(category._id, { title, slug: slugify(title) || category.slug });
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => move(category._id, -1)}
+                  disabled={index === 0}
+                  className="flex size-11 shrink-0 items-center justify-center rounded-md text-muted hover:bg-surface-2 disabled:opacity-30"
+                  aria-label="Move up"
+                >
+                  <ChevronUp className="size-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => move(category._id, 1)}
+                  disabled={index === categories.length - 1}
+                  className="flex size-11 shrink-0 items-center justify-center rounded-md text-muted hover:bg-surface-2 disabled:opacity-30"
+                  aria-label="Move down"
+                >
+                  <ChevronDown className="size-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => remove(category._id)}
+                  className="flex size-11 shrink-0 items-center justify-center rounded-md text-muted hover:text-red"
+                  aria-label={`Delete ${category.title || "category"}`}
+                >
+                  <Trash2 className="size-4" />
+                </button>
+              </div>
+              <p className="mt-2 text-xs text-subtle">
+                {count} {count === 1 ? "dish" : "dishes"}
+              </p>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+function CafePanel({
+  content,
+  onChange,
+  pinBusy,
+  pinMessage,
+  onChangePin,
+  onReset,
+}: {
+  content: MenuContent;
+  onChange: (content: MenuContent) => void;
+  pinBusy: boolean;
+  pinMessage: string | null;
+  onChangePin: (pin: string) => void;
+  onReset: () => void;
+}) {
+  const settings = content.settings;
+  const [newPin, setNewPin] = useState("");
+  const [confirmReset, setConfirmReset] = useState(false);
+
+  function patch(partial: Partial<RestaurantSettings>) {
+    onChange({ ...content, settings: { ...settings, ...partial } });
+  }
+
+  return (
+    <div className="flex max-w-xl flex-col gap-4">
+      <h1 className="font-display text-2xl font-bold tracking-tight">Café</h1>
       <p className="text-sm text-muted">
-        Guests see this on the QR menu. WhatsApp is the only contact button — there is no
-        call button.
+        Name, WhatsApp and address on the QR menu. Publish to send them to every table.
       </p>
       <Field label="Café name">
         <input
@@ -238,12 +907,12 @@ function SettingsForm({
           onChange={(e) => patch({ tagline: e.target.value })}
         />
       </Field>
-      <Field label="WhatsApp number (country code, digits only)">
+      <Field label="WhatsApp (country code, digits only)">
         <input
           className={inputClass}
           inputMode="numeric"
           value={settings.whatsappNumber}
-          onChange={(e) => patch({ whatsappNumber: e.target.value.replace(/[^\d]/g, "") })}
+          onChange={(e) => patch({ whatsappNumber: e.target.value.replace(/\D/g, "") })}
         />
       </Field>
       <Field label="Address">
@@ -283,344 +952,65 @@ function SettingsForm({
           onChange={(e) => patch({ logo: e.target.value })}
         />
       </Field>
-    </form>
-  );
-}
 
-function CategoriesEditor({
-  content,
-  onChange,
-}: {
-  content: MenuContent;
-  onChange: (content: MenuContent) => void;
-}) {
-  const categories = [...content.categories].sort((a, b) => a.order - b.order);
-
-  function update(id: string, partial: Partial<MenuCategory>) {
-    onChange({
-      ...content,
-      categories: content.categories.map((category) =>
-        category._id === id ? { ...category, ...partial } : category,
-      ),
-    });
-  }
-
-  function add() {
-    const order = categories.length + 1;
-    const title = "New category";
-    const category: MenuCategory = {
-      _id: `cat-${Date.now()}`,
-      _type: "menuCategory",
-      title,
-      slug: slugify(`${title}-${order}`),
-      order,
-    };
-    onChange({ ...content, categories: [...content.categories, category] });
-  }
-
-  function remove(id: string) {
-    onChange({
-      ...content,
-      categories: content.categories.filter((category) => category._id !== id),
-      items: content.items.filter((item) => item.categoryId !== id),
-    });
-  }
-
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="font-display text-2xl font-bold tracking-tight">Categories</h1>
-        <button
-          type="button"
-          onClick={add}
-          className="inline-flex min-h-11 items-center gap-1.5 rounded-md bg-lime px-3 text-sm font-semibold text-lime-fg"
-        >
-          <Plus className="size-4" />
-          Add
-        </button>
-      </div>
-      <ul className="flex flex-col gap-2">
-        {categories.map((category) => {
-          const count = content.items.filter((item) => item.categoryId === category._id).length;
-          return (
-            <li key={category._id} className="rounded-xl bg-surface p-3 shadow-[var(--shadow-border)]">
-              <div className="grid gap-2 sm:grid-cols-[1fr_120px_auto]">
-                <input
-                  className={inputClass}
-                  value={category.title}
-                  onChange={(e) => {
-                    const title = e.target.value;
-                    update(category._id, { title, slug: slugify(title) || category.slug });
-                  }}
-                />
-                <input
-                  className={inputClass}
-                  type="number"
-                  value={category.order}
-                  onChange={(e) => update(category._id, { order: Number(e.target.value) })}
-                  aria-label="Order"
-                />
-                <button
-                  type="button"
-                  onClick={() => remove(category._id)}
-                  className="inline-flex size-11 items-center justify-center rounded-md text-muted hover:text-red"
-                  aria-label={`Delete ${category.title}`}
-                >
-                  <Trash2 className="size-4" />
-                </button>
-              </div>
-              <p className="mt-2 text-xs text-subtle">
-                {count} items · /{category.slug}
-              </p>
-            </li>
-          );
-        })}
-      </ul>
-    </div>
-  );
-}
-
-function ItemsEditor({
-  content,
-  onChange,
-}: {
-  content: MenuContent;
-  onChange: (content: MenuContent) => void;
-}) {
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [newCategoryId, setNewCategoryId] = useState(content.categories[0]?._id ?? "");
-  const categories = [...content.categories].sort((a, b) => a.order - b.order);
-
-  function updateItem(id: string, partial: Partial<MenuItem>) {
-    onChange({
-      ...content,
-      items: content.items.map((item) => (item._id === id ? { ...item, ...partial } : item)),
-    });
-  }
-
-  function addItem(categoryId: string) {
-    const order = content.items.filter((item) => item.categoryId === categoryId).length + 1;
-    const item: MenuItem = {
-      _id: `item-${Date.now()}`,
-      _type: "menuItem",
-      name: "New dish",
-      slug: `new-dish-${order}`,
-      categoryId,
-      price: 0,
-      dietType: "veg",
-      available: true,
-      featured: false,
-      order,
-    };
-    onChange({ ...content, items: [...content.items, item] });
-    setEditingId(item._id);
-  }
-
-  function removeItem(id: string) {
-    onChange({ ...content, items: content.items.filter((item) => item._id !== id) });
-    if (editingId === id) setEditingId(null);
-  }
-
-  return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="font-display text-2xl font-bold tracking-tight">Menu items</h1>
-        <div className="flex gap-2">
-          <select
-            className={cn(inputClass, "w-40")}
-            value={newCategoryId}
-            onChange={(e) => setNewCategoryId(e.target.value)}
-          >
-            {categories.map((category) => (
-              <option key={category._id} value={category._id}>
-                {category.title}
-              </option>
-            ))}
-          </select>
+      <div className="mt-4 rounded-xl bg-surface p-4 shadow-[var(--shadow-border)]">
+        <p className="font-display font-bold">Change PIN</p>
+        <p className="mt-1 text-sm text-muted">4 digits. Keep it somewhere the café team knows.</p>
+        <div className="mt-3 flex gap-2">
+          <input
+            className={inputClass}
+            inputMode="numeric"
+            maxLength={4}
+            value={newPin}
+            placeholder="••••"
+            onChange={(e) => setNewPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+          />
           <button
             type="button"
-            onClick={() => addItem(newCategoryId)}
-            disabled={!newCategoryId}
-            className="inline-flex min-h-11 items-center gap-1.5 rounded-md bg-lime px-3 text-sm font-semibold text-lime-fg disabled:opacity-40"
+            disabled={newPin.length !== 4 || pinBusy}
+            onClick={() => {
+              onChangePin(newPin);
+              setNewPin("");
+            }}
+            className="inline-flex min-h-11 shrink-0 items-center rounded-md bg-lime px-3 text-sm font-semibold text-lime-fg disabled:opacity-40"
           >
-            <Plus className="size-4" />
-            Add item
+            Save PIN
           </button>
         </div>
+        {pinMessage ? <p className="mt-2 text-sm text-muted">{pinMessage}</p> : null}
       </div>
 
-      {categories.map((category) => {
-        const items = content.items
-          .filter((item) => item.categoryId === category._id)
-          .sort((a, b) => a.order - b.order);
-        return (
-          <section key={category._id}>
-            <div className="mb-2 flex items-center justify-between">
-              <h2 className="font-display text-lg font-bold">{category.title}</h2>
-              <button
-                type="button"
-                onClick={() => addItem(category._id)}
-                className="text-sm font-semibold text-lime"
-              >
-                Add to {category.title}
-              </button>
-            </div>
-            <ul className="flex flex-col gap-2">
-              {items.map((item) => {
-                const open = editingId === item._id;
-                return (
-                  <li
-                    key={item._id}
-                    className="rounded-xl bg-surface p-3 shadow-[var(--shadow-border)]"
-                  >
-                    <div className="flex items-center gap-3">
-                      <DietBadge diet={item.dietType} />
-                      <button
-                        type="button"
-                        onClick={() => setEditingId(open ? null : item._id)}
-                        className="min-w-0 flex-1 text-left"
-                      >
-                        <span
-                          className={cn(
-                            "block truncate text-sm font-semibold",
-                            !item.available && "text-subtle",
-                          )}
-                        >
-                          {item.name}
-                        </span>
-                        <span className="text-xs text-muted">
-                          {formatInr(item.price)}
-                          {item.available ? "" : " · Not available"}
-                          {item.featured ? " · Popular" : ""}
-                        </span>
-                      </button>
-                      <label className="flex items-center gap-2 text-xs text-muted">
-                        <input
-                          type="checkbox"
-                          checked={item.available}
-                          onChange={(e) =>
-                            updateItem(item._id, { available: e.target.checked })
-                          }
-                          className="size-4 accent-lime"
-                        />
-                        On
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => removeItem(item._id)}
-                        className="flex size-10 items-center justify-center text-muted hover:text-red"
-                        aria-label={`Delete ${item.name}`}
-                      >
-                        <Trash2 className="size-4" />
-                      </button>
-                    </div>
-                    {open ? (
-                      <ItemForm
-                        item={item}
-                        categories={categories}
-                        onChange={(partial) => updateItem(item._id, partial)}
-                      />
-                    ) : null}
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-        );
-      })}
-    </div>
-  );
-}
-
-function ItemForm({
-  item,
-  categories,
-  onChange,
-}: {
-  item: MenuItem;
-  categories: MenuCategory[];
-  onChange: (partial: Partial<MenuItem>) => void;
-}) {
-  return (
-    <div className="mt-3 grid gap-3 border-t border-line pt-3 sm:grid-cols-2">
-      <Field label="Name">
-        <input
-          className={inputClass}
-          value={item.name}
-          onChange={(e) => {
-            const name = e.target.value;
-            onChange({ name, slug: slugify(name) || item.slug });
-          }}
-        />
-      </Field>
-      <Field label="Price (INR)">
-        <input
-          className={inputClass}
-          type="number"
-          min={0}
-          value={item.price}
-          onChange={(e) => onChange({ price: Number(e.target.value) })}
-        />
-      </Field>
-      <Field label="Category">
-        <select
-          className={inputClass}
-          value={item.categoryId}
-          onChange={(e) => onChange({ categoryId: e.target.value })}
+      {confirmReset ? (
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              onReset();
+              setConfirmReset(false);
+            }}
+            className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-md bg-red px-3 text-sm font-semibold"
+          >
+            <RotateCcw className="size-4" />
+            Reset sample menu
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirmReset(false)}
+            className="inline-flex min-h-11 flex-1 items-center justify-center rounded-md bg-surface px-3 text-sm font-semibold shadow-[var(--shadow-border)]"
+          >
+            Cancel
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setConfirmReset(true)}
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md text-sm font-semibold text-muted hover:text-fg"
         >
-          {categories.map((category) => (
-            <option key={category._id} value={category._id}>
-              {category.title}
-            </option>
-          ))}
-        </select>
-      </Field>
-      <Field label="Diet">
-        <select
-          className={inputClass}
-          value={item.dietType}
-          onChange={(e) => onChange({ dietType: e.target.value as DietType })}
-        >
-          <option value="veg">Veg</option>
-          <option value="nonveg">Non-veg</option>
-          <option value="vegan">Vegan</option>
-          <option value="egg">Egg</option>
-        </select>
-      </Field>
-      <div className="sm:col-span-2">
-        <Field label="Description">
-          <textarea
-            className={areaClass}
-            rows={2}
-            value={item.description ?? ""}
-            onChange={(e) => onChange({ description: e.target.value })}
-          />
-        </Field>
-      </div>
-      <Field label="Image URL (optional)">
-        <input
-          className={inputClass}
-          value={item.image ?? ""}
-          onChange={(e) => onChange({ image: e.target.value })}
-        />
-      </Field>
-      <Field label="Order">
-        <input
-          className={inputClass}
-          type="number"
-          value={item.order}
-          onChange={(e) => onChange({ order: Number(e.target.value) })}
-        />
-      </Field>
-      <label className="flex min-h-11 items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={item.featured}
-          onChange={(e) => onChange({ featured: e.target.checked })}
-          className="size-4 accent-lime"
-        />
-        Popular
-      </label>
+          <RotateCcw className="size-4" />
+          Reset to sample menu
+        </button>
+      )}
     </div>
   );
 }

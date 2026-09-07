@@ -16,4 +16,5 @@ screenshots
 .nitro
 .cache
 data/menu.json
+data/studio-auth.json
 

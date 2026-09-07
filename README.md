@@ -16,11 +16,11 @@ No marketing pages.
 ## How edits go live
 
 1. Open Menu Studio
-2. Change a price, hide a dish, add an item, or update café details
-3. It saves
+2. First visit: set a 4-digit PIN (only the café team should know it)
+3. Add or edit dishes, then tap **Publish**
 4. Every table QR shows the new menu
 
-The live site store is the source of truth. Until the first Studio save, the site shows the seed menu.
+Nothing goes live until you publish. The live site store is the source of truth. Until the first publish, the site shows the seed menu.
 
 ## Content model
 

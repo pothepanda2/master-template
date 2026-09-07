@@ -41,9 +41,10 @@ export function useMenuContent(initial?: MenuContent): MenuContent {
         setContent(detail);
         return;
       }
-      setContent(readStoredContent() ?? initial ?? cloneSeed());
+      if (event?.type === "storage") {
+        setContent(readStoredContent() ?? initial ?? cloneSeed());
+      }
     };
-    sync();
     window.addEventListener(CONTENT_EVENT, sync);
     window.addEventListener("storage", sync);
     return () => {
