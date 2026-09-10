@@ -39,7 +39,7 @@ export function CategoryNav({
                 "shrink-0 rounded-pill px-3.5 py-2 text-sm font-semibold whitespace-nowrap transition-colors duration-150",
                 active
                   ? "bg-lime text-lime-fg"
-                  : "bg-surface-2 text-muted shadow-[var(--shadow-border)] hover:text-fg",
+                  : "bg-surface text-muted shadow-[var(--shadow-border)] hover:text-fg",
               )}
             >
               {category.title}

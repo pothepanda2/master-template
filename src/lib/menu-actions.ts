@@ -9,9 +9,9 @@ export const loadPublishedMenu = createServerFn({ method: "GET" }).handler(
 );
 
 export const studioStatus = createServerFn({ method: "GET" }).handler(
-  async (): Promise<{ hasPin: boolean }> => {
-    const { studioHasPin } = await import("./studio-auth.server");
-    return { hasPin: await studioHasPin() };
+  async (): Promise<{ hasPassword: boolean }> => {
+    const { studioHasPassword } = await import("./studio-auth.server");
+    return { hasPassword: await studioHasPassword() };
   },
 );
 
@@ -26,42 +26,39 @@ export const checkStudioToken = createServerFn({ method: "POST" })
     return { ok: await studioTokenValid(data.token) };
   });
 
-export const setupStudioPin = createServerFn({ method: "POST" })
-  .validator((data: unknown) => {
-    if (!data || typeof data !== "object") throw new Error("PIN must be 4 digits");
-    const pin = (data as { pin?: unknown }).pin;
-    if (typeof pin !== "string") throw new Error("PIN must be 4 digits");
-    return { pin };
-  })
+function readPassword(data: unknown): string {
+  if (!data || typeof data !== "object") throw new Error("Password must be 4–64 characters");
+  const password = (data as { password?: unknown }).password;
+  if (typeof password !== "string") throw new Error("Password must be 4–64 characters");
+  return password;
+}
+
+export const setupStudioPassword = createServerFn({ method: "POST" })
+  .validator((data: unknown) => ({ password: readPassword(data) }))
   .handler(async ({ data }): Promise<{ token: string }> => {
-    const { setStudioPin } = await import("./studio-auth.server");
-    return { token: await setStudioPin(data.pin) };
+    const { setStudioPassword } = await import("./studio-auth.server");
+    return { token: await setStudioPassword(data.password) };
   });
 
-export const changeStudioPin = createServerFn({ method: "POST" })
+export const changeStudioPassword = createServerFn({ method: "POST" })
   .validator((data: unknown) => {
-    if (!data || typeof data !== "object") throw new Error("Invalid PIN change");
-    const body = data as { pin?: unknown; token?: unknown };
-    if (typeof body.pin !== "string" || typeof body.token !== "string") {
-      throw new Error("Invalid PIN change");
+    if (!data || typeof data !== "object") throw new Error("Invalid password change");
+    const body = data as { password?: unknown; token?: unknown };
+    if (typeof body.password !== "string" || typeof body.token !== "string") {
+      throw new Error("Invalid password change");
     }
-    return { pin: body.pin, token: body.token };
+    return { password: body.password, token: body.token };
   })
   .handler(async ({ data }): Promise<{ token: string }> => {
-    const { setStudioPin } = await import("./studio-auth.server");
-    return { token: await setStudioPin(data.pin, data.token) };
+    const { setStudioPassword } = await import("./studio-auth.server");
+    return { token: await setStudioPassword(data.password, data.token) };
   });
 
 export const unlockStudio = createServerFn({ method: "POST" })
-  .validator((data: unknown) => {
-    if (!data || typeof data !== "object") throw new Error("Wrong PIN");
-    const pin = (data as { pin?: unknown }).pin;
-    if (typeof pin !== "string") throw new Error("Wrong PIN");
-    return { pin };
-  })
+  .validator((data: unknown) => ({ password: readPassword(data) }))
   .handler(async ({ data }): Promise<{ token: string }> => {
-    const { verifyStudioPin } = await import("./studio-auth.server");
-    return { token: await verifyStudioPin(data.pin) };
+    const { verifyStudioPassword } = await import("./studio-auth.server");
+    return { token: await verifyStudioPassword(data.password) };
   });
 
 export const publishMenu = createServerFn({ method: "POST" })

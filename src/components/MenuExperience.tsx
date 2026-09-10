@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CategoryNav } from "@/components/CategoryNav";
-import { DietFilter } from "@/components/DietFilter";
+import { VegButton } from "@/components/DietFilter";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { MenuSection } from "@/components/MenuSection";
 import { SearchBar } from "@/components/SearchBar";
+import { ThemeApplier } from "@/components/ThemeApplier";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
 import { useMenuContent, saveContent } from "@/lib/content";
 import { loadPublishedMenu } from "@/lib/menu-actions";
@@ -66,7 +67,7 @@ export function MenuExperience({ initial }: { initial: MenuContent }) {
         const id = hit?.target.getAttribute("data-category-id");
         if (id) setActiveId(id);
       },
-      { rootMargin: "-220px 0px -50% 0px", threshold: [0.1, 0.35] },
+      { rootMargin: "-180px 0px -50% 0px", threshold: [0.1, 0.35] },
     );
     nodes.forEach((node) => observer.observe(node));
     return () => observer.disconnect();
@@ -88,12 +89,23 @@ export function MenuExperience({ initial }: { initial: MenuContent }) {
 
   return (
     <div className="min-h-dvh bg-bg text-fg">
+      <ThemeApplier
+        themeId={content.settings.themeId}
+        accentColor={content.settings.accentColor}
+      />
       <Header settings={content.settings} />
 
-      <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-20 border-b border-line bg-bg">
+      <div className="sticky top-0 z-20 border-b border-line bg-bg/92 pt-[env(safe-area-inset-top)] backdrop-blur-md">
         <div className="mx-auto flex max-w-3xl flex-col gap-2.5 px-4 py-2.5">
-          <SearchBar value={query} onChange={setQuery} />
-          <DietFilter value={diet} onChange={setDiet} />
+          <div className="flex items-center gap-2">
+            <div className="min-w-0 flex-1">
+              <SearchBar value={query} onChange={setQuery} />
+            </div>
+            <VegButton
+              active={diet === "veg"}
+              onClick={() => setDiet(diet === "veg" ? "all" : "veg")}
+            />
+          </div>
           <CategoryNav
             categories={visible.map((section) => section.category)}
             activeId={activeId}
@@ -102,10 +114,10 @@ export function MenuExperience({ initial }: { initial: MenuContent }) {
         </div>
       </div>
 
-      <main id="menu" className="mx-auto max-w-3xl px-4 pt-5 pb-10">
+      <main id="menu" className="mx-auto max-w-3xl px-4 pt-6 pb-10">
         {totalVisible === 0 ? (
           <div className="rounded-xl bg-surface px-5 py-12 text-center shadow-[var(--shadow-border)]">
-            <p className="font-display text-lg font-bold text-fg">No dishes match</p>
+            <p className="font-display text-lg font-semibold text-fg">No dishes match</p>
             <p className="mt-1 text-sm text-muted">Try another word or clear the filters.</p>
             <button
               type="button"
@@ -119,7 +131,7 @@ export function MenuExperience({ initial }: { initial: MenuContent }) {
             </button>
           </div>
         ) : (
-          <div className="flex flex-col gap-8">
+          <div className="flex flex-col gap-9">
             {visible.map((section) => (
               <MenuSection
                 key={section.category._id}

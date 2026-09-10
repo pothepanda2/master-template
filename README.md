@@ -16,7 +16,7 @@ No marketing pages.
 ## How edits go live
 
 1. Open Menu Studio
-2. First visit: set a 4-digit PIN (only the café team should know it)
+2. First visit: set a password (only the café team should know it)
 3. Add or edit dishes, then tap **Publish**
 4. Every table QR shows the new menu
 

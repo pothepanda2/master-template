@@ -1,4 +1,5 @@
-import { Clock, Instagram, MapPin } from "lucide-react";
+import { Clock, MapPin } from "lucide-react";
+import { InstagramButton } from "@/components/InstagramButton";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
 import type { RestaurantSettings } from "@/lib/types";
 
@@ -7,7 +8,7 @@ export function Footer({ settings }: { settings: RestaurantSettings }) {
     <footer id="about" className="border-t border-line bg-surface">
       <div className="mx-auto flex max-w-3xl flex-col gap-5 px-4 py-8 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-10">
         <div>
-          <p className="font-display text-lg font-bold tracking-tight text-fg">
+          <p className="font-display text-xl font-semibold tracking-tight text-fg">
             {settings.name}
           </p>
           {settings.tagline ? (
@@ -49,17 +50,7 @@ export function Footer({ settings }: { settings: RestaurantSettings }) {
             cafeName={settings.name}
             variant="footer"
           />
-          {settings.instagramUrl ? (
-            <a
-              href={settings.instagramUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex min-h-11 items-center gap-2 rounded-md px-3 text-sm font-semibold text-fg shadow-[var(--shadow-border)]"
-            >
-              <Instagram className="size-4" strokeWidth={2} />
-              Instagram
-            </a>
-          ) : null}
+          <InstagramButton url={settings.instagramUrl} variant="footer" />
         </div>
       </div>
     </footer>

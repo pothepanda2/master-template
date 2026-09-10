@@ -1,37 +1,44 @@
 @import "tailwindcss";
 
 @theme {
-  --color-bg: #050605;
-  --color-surface: #101410;
-  --color-surface-2: #181d18;
-  --color-fg: #f3f6ee;
-  --color-muted: #9aa394;
-  --color-subtle: #6e7669;
-  --color-lime: #c8ff3d;
-  --color-lime-dim: #8fb82c;
-  --color-lime-fg: #121800;
-  --color-red: #ff3b3b;
-  --color-veg: #2fce5a;
-  --color-nonveg: #e23b3b;
-  --color-egg: #e4ae36;
-  --color-vegan: #9ad64a;
-  --color-wa: #25d366;
-  --color-wa-fg: #04210e;
-  --color-border: #242a24;
-  --color-line: #1b211b;
+  --color-bg: #f4ebdd;
+  --color-surface: #fff8ef;
+  --color-surface-2: #efe4d2;
+  --color-fg: #2a1f16;
+  --color-muted: #746354;
+  --color-subtle: #9a8874;
+  --color-lime: #c45c26;
+  --color-lime-dim: #a34a1e;
+  --color-lime-fg: #fff8ef;
+  --color-red: #c0392b;
+  --color-veg: #2a8a3e;
+  --color-nonveg: #c0392b;
+  --color-egg: #c48a1a;
+  --color-vegan: #3d8f4a;
+  --color-wa: #1fa855;
+  --color-wa-fg: #f4fff8;
+  --color-border: #e4d5c0;
+  --color-line: #eadcc8;
+  --color-price: #8a4a1f;
 
   --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Syne", "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Fraunces", "Times New Roman", serif;
 
   --radius-xs: 4px;
   --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 22px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 26px;
   --radius-pill: 999px;
 
-  --shadow-border: 0 0 0 1px rgba(243, 246, 238, 0.08);
-  --shadow-border-hover: 0 0 0 1px rgba(200, 255, 61, 0.28);
+  --shadow-border:
+    0 0 0 1px rgba(42, 31, 22, 0.06),
+    0 1px 2px -1px rgba(42, 31, 22, 0.06),
+    0 2px 8px rgba(42, 31, 22, 0.04);
+  --shadow-border-hover:
+    0 0 0 1px color-mix(in srgb, var(--color-lime) 35%, transparent),
+    0 1px 2px -1px rgba(42, 31, 22, 0.08),
+    0 4px 12px rgba(42, 31, 22, 0.06);
 }
 
 @layer base {
@@ -43,7 +50,9 @@
   }
 
   body {
-    background: var(--color-bg);
+    background:
+      radial-gradient(1200px 420px at 50% -80px, color-mix(in srgb, var(--color-surface) 88%, transparent), transparent 70%),
+      var(--color-bg);
     color: var(--color-fg);
     font-family: var(--font-sans);
     min-height: 100dvh;

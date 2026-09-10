@@ -26,7 +26,7 @@ export function SearchBar({
         autoCorrect="off"
         enterKeyHint="search"
         className={cn(
-          "h-11 w-full rounded-md border-0 bg-surface-2 pr-10 pl-10 text-base text-fg placeholder:text-subtle",
+          "h-11 w-full rounded-md border-0 bg-surface pr-10 pl-10 text-base text-fg placeholder:text-subtle",
           "shadow-[var(--shadow-border)] transition-[box-shadow] duration-150",
           "focus:shadow-[var(--shadow-border-hover)] focus:outline-none",
         )}

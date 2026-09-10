@@ -13,6 +13,8 @@ export type RestaurantSettings = {
   googleMapsUrl?: string;
   hours?: string;
   instagramUrl?: string;
+  themeId?: string;
+  accentColor?: string;
 };
 
 export type MenuCategory = {

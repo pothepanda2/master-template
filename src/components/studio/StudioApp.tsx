@@ -14,14 +14,17 @@ import {
   Upload,
 } from "lucide-react";
 import { DietBadge } from "@/components/DietBadge";
-import { PinLock } from "@/components/studio/PinLock";
+import { CsvTools } from "@/components/studio/CsvTools";
+import { PasswordLock } from "@/components/studio/PasswordLock";
+import { ThemePicker } from "@/components/studio/ThemePicker";
+import { ThemeApplier } from "@/components/ThemeApplier";
 import { cloneSeed, saveContent } from "@/lib/content";
 import {
-  changeStudioPin,
+  changeStudioPassword,
   checkStudioToken,
   loadPublishedMenu,
   publishMenu,
-  setupStudioPin,
+  setupStudioPassword,
   studioStatus,
   unlockStudio,
 } from "@/lib/menu-actions";
@@ -61,8 +64,8 @@ export function StudioApp() {
   const router = useRouter();
   const [gate, setGate] = useState<Gate>("loading");
   const [token, setToken] = useState("");
-  const [pinError, setPinError] = useState<string | null>(null);
-  const [pinBusy, setPinBusy] = useState(false);
+  const [lockError, setLockError] = useState<string | null>(null);
+  const [lockBusy, setLockBusy] = useState(false);
   const [draft, setDraft] = useState<MenuContent>(cloneSeed);
   const [baseline, setBaseline] = useState("");
   const [tab, setTab] = useState<Tab>("menu");
@@ -71,8 +74,8 @@ export function StudioApp() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [filterCat, setFilterCat] = useState("all");
-  const [pinBusyChange, setPinBusyChange] = useState(false);
-  const [pinChangeMsg, setPinChangeMsg] = useState<string | null>(null);
+  const [passwordBusy, setPasswordBusy] = useState(false);
+  const [passwordMsg, setPasswordMsg] = useState<string | null>(null);
 
   const dirty = snapshot(draft) !== baseline;
   const cafeName = draft.settings.name || "your café";
@@ -99,7 +102,7 @@ export function StudioApp() {
           }
           clearStudioToken();
         }
-        setGate(status.hasPin ? "lock" : "setup");
+        setGate(status.hasPassword ? "lock" : "setup");
       } catch {
         if (cancelled) return;
         setDraft(cloneSeed());
@@ -115,25 +118,25 @@ export function StudioApp() {
     writeStudioToken(next);
     setToken(next);
     setGate("open");
-    setPinError(null);
+    setLockError(null);
   }
 
-  async function handlePin(pin: string) {
-    if (pin.length !== 4) return;
-    setPinBusy(true);
-    setPinError(null);
+  async function handlePassword(password: string) {
+    if (password.trim().length < 4) return;
+    setLockBusy(true);
+    setLockError(null);
     try {
       if (gate === "setup") {
-        const result = await setupStudioPin({ data: { pin } });
+        const result = await setupStudioPassword({ data: { password } });
         rememberToken(result.token);
       } else {
-        const result = await unlockStudio({ data: { pin } });
+        const result = await unlockStudio({ data: { password } });
         rememberToken(result.token);
       }
     } catch (error) {
-      setPinError(error instanceof Error ? error.message : "Wrong PIN");
+      setLockError(error instanceof Error ? error.message : "Wrong password");
     } finally {
-      setPinBusy(false);
+      setLockBusy(false);
     }
   }
 
@@ -175,7 +178,7 @@ export function StudioApp() {
         clearStudioToken();
         setToken("");
         setGate("lock");
-        setPinError("Enter your PIN again");
+        setLockError("Enter your password again");
       }
       setSaveState("error");
     }
@@ -185,20 +188,20 @@ export function StudioApp() {
     clearStudioToken();
     setToken("");
     setGate("lock");
-    setPinError(null);
+    setLockError(null);
   }
 
-  async function updatePin(pin: string) {
-    setPinBusyChange(true);
-    setPinChangeMsg(null);
+  async function updatePassword(password: string) {
+    setPasswordBusy(true);
+    setPasswordMsg(null);
     try {
-      const result = await changeStudioPin({ data: { pin, token } });
+      const result = await changeStudioPassword({ data: { password, token } });
       rememberToken(result.token);
-      setPinChangeMsg("PIN updated");
+      setPasswordMsg("Password updated");
     } catch (error) {
-      setPinChangeMsg(error instanceof Error ? error.message : "Could not update PIN");
+      setPasswordMsg(error instanceof Error ? error.message : "Could not update password");
     } finally {
-      setPinBusyChange(false);
+      setPasswordBusy(false);
     }
   }
 
@@ -212,12 +215,12 @@ export function StudioApp() {
 
   if (gate === "setup" || gate === "lock") {
     return (
-      <PinLock
+      <PasswordLock
         mode={gate === "setup" ? "setup" : "unlock"}
         cafeName={cafeName}
-        error={pinError}
-        busy={pinBusy}
-        onSubmit={handlePin}
+        error={lockError}
+        busy={lockBusy}
+        onSubmit={handlePassword}
       />
     );
   }
@@ -237,6 +240,7 @@ export function StudioApp() {
 
   return (
     <div className="min-h-dvh bg-bg text-fg">
+      <ThemeApplier themeId={draft.settings.themeId} accentColor={draft.settings.accentColor} />
       <header className="sticky top-0 z-20 border-b border-line bg-bg/95 pt-[env(safe-area-inset-top)] backdrop-blur-sm">
         <div className="mx-auto flex h-14 max-w-5xl items-center gap-2 px-3 sm:px-4">
           <Link
@@ -317,9 +321,9 @@ export function StudioApp() {
           <CafePanel
             content={draft}
             onChange={patchDraft}
-            pinBusy={pinBusyChange}
-            pinMessage={pinChangeMsg}
-            onChangePin={updatePin}
+            passwordBusy={passwordBusy}
+            passwordMessage={passwordMsg}
+            onChangePassword={updatePassword}
             onReset={() => {
               const next = cloneSeed();
               patchDraft(next);
@@ -433,6 +437,7 @@ function MenuPanel({
             Add dish
           </button>
         </div>
+        <CsvTools content={content} onChange={onChange} />
 
         <label className="relative block">
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-subtle" />
@@ -867,20 +872,21 @@ function CategoriesPanel({
 function CafePanel({
   content,
   onChange,
-  pinBusy,
-  pinMessage,
-  onChangePin,
+  passwordBusy,
+  passwordMessage,
+  onChangePassword,
   onReset,
 }: {
   content: MenuContent;
   onChange: (content: MenuContent) => void;
-  pinBusy: boolean;
-  pinMessage: string | null;
-  onChangePin: (pin: string) => void;
+  passwordBusy: boolean;
+  passwordMessage: string | null;
+  onChangePassword: (password: string) => void;
   onReset: () => void;
 }) {
   const settings = content.settings;
-  const [newPin, setNewPin] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [confirmReset, setConfirmReset] = useState(false);
 
   function patch(partial: Partial<RestaurantSettings>) {
@@ -953,31 +959,52 @@ function CafePanel({
         />
       </Field>
 
+      <ThemePicker
+        themeId={settings.themeId}
+        accentColor={settings.accentColor}
+        onChange={(next) => patch(next)}
+      />
+
       <div className="mt-4 rounded-xl bg-surface p-4 shadow-[var(--shadow-border)]">
-        <p className="font-display font-bold">Change PIN</p>
-        <p className="mt-1 text-sm text-muted">4 digits. Keep it somewhere the café team knows.</p>
-        <div className="mt-3 flex gap-2">
+        <p className="font-display font-semibold">Change password</p>
+        <p className="mt-1 text-sm text-muted">At least 4 characters. Keep it with the café team.</p>
+        <div className="mt-3 flex flex-col gap-2">
           <input
             className={inputClass}
-            inputMode="numeric"
-            maxLength={4}
-            value={newPin}
-            placeholder="••••"
-            onChange={(e) => setNewPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+            type="password"
+            autoComplete="new-password"
+            maxLength={64}
+            value={newPassword}
+            placeholder="New password"
+            onChange={(e) => setNewPassword(e.target.value.slice(0, 64))}
+          />
+          <input
+            className={inputClass}
+            type="password"
+            autoComplete="new-password"
+            maxLength={64}
+            value={confirmPassword}
+            placeholder="Confirm password"
+            onChange={(e) => setConfirmPassword(e.target.value.slice(0, 64))}
           />
           <button
             type="button"
-            disabled={newPin.length !== 4 || pinBusy}
+            disabled={
+              newPassword.trim().length < 4 ||
+              newPassword !== confirmPassword ||
+              passwordBusy
+            }
             onClick={() => {
-              onChangePin(newPin);
-              setNewPin("");
+              onChangePassword(newPassword.trim());
+              setNewPassword("");
+              setConfirmPassword("");
             }}
-            className="inline-flex min-h-11 shrink-0 items-center rounded-md bg-lime px-3 text-sm font-semibold text-lime-fg disabled:opacity-40"
+            className="inline-flex min-h-11 items-center justify-center rounded-md bg-lime px-3 text-sm font-semibold text-lime-fg disabled:opacity-40"
           >
-            Save PIN
+            Save password
           </button>
         </div>
-        {pinMessage ? <p className="mt-2 text-sm text-muted">{pinMessage}</p> : null}
+        {passwordMessage ? <p className="mt-2 text-sm text-muted">{passwordMessage}</p> : null}
       </div>
 
       {confirmReset ? (
@@ -988,7 +1015,7 @@ function CafePanel({
               onReset();
               setConfirmReset(false);
             }}
-            className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-md bg-red px-3 text-sm font-semibold"
+            className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-md bg-red px-3 text-sm font-semibold text-lime-fg"
           >
             <RotateCcw className="size-4" />
             Reset sample menu

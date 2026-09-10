@@ -12,8 +12,8 @@ type StudioAuth = {
   sessions: Record<string, number>;
 };
 
-function hashPin(pin: string): string {
-  return createHash("sha256").update(`qr-studio:${pin}`).digest("hex");
+function hashSecret(secret: string): string {
+  return createHash("sha256").update(`qr-studio:${secret}`).digest("hex");
 }
 
 function hashesMatch(a: string, b: string): boolean {
@@ -23,8 +23,12 @@ function hashesMatch(a: string, b: string): boolean {
   return timingSafeEqual(left, right);
 }
 
-function isPin(value: string): boolean {
-  return /^\d{4}$/.test(value);
+function normalizeSecret(value: string): string {
+  return value.normalize("NFKC").trim();
+}
+
+function isSecret(value: string): boolean {
+  return value.length >= 4 && value.length <= 64;
 }
 
 function prune(auth: StudioAuth): StudioAuth {
@@ -91,7 +95,7 @@ async function writeAuth(auth: StudioAuth): Promise<void> {
   }
 }
 
-export async function studioHasPin(): Promise<boolean> {
+export async function studioHasPassword(): Promise<boolean> {
   const auth = await readAuth();
   return Boolean(auth?.pinHash);
 }
@@ -120,23 +124,25 @@ async function issueToken(auth: StudioAuth): Promise<string> {
   return token;
 }
 
-export async function setStudioPin(pin: string, token?: string): Promise<string> {
-  if (!isPin(pin)) throw new Error("PIN must be 4 digits");
+export async function setStudioPassword(password: string, token?: string): Promise<string> {
+  const secret = normalizeSecret(password);
+  if (!isSecret(secret)) throw new Error("Password must be 4–64 characters");
   const existing = await readAuth();
   if (existing) {
     if (!token || !(await studioTokenValid(token))) {
       throw new Error("Studio is locked");
     }
-    return issueToken({ pinHash: hashPin(pin), sessions: {} });
+    return issueToken({ pinHash: hashSecret(secret), sessions: {} });
   }
-  return issueToken({ pinHash: hashPin(pin), sessions: {} });
+  return issueToken({ pinHash: hashSecret(secret), sessions: {} });
 }
 
-export async function verifyStudioPin(pin: string): Promise<string> {
-  if (!isPin(pin)) throw new Error("Wrong PIN");
+export async function verifyStudioPassword(password: string): Promise<string> {
+  const secret = normalizeSecret(password);
+  if (!isSecret(secret)) throw new Error("Wrong password");
   const auth = await readAuth();
-  if (!auth) throw new Error("Set a PIN first");
-  if (!hashesMatch(auth.pinHash, hashPin(pin))) throw new Error("Wrong PIN");
+  if (!auth) throw new Error("Set a password first");
+  if (!hashesMatch(auth.pinHash, hashSecret(secret))) throw new Error("Wrong password");
   return issueToken(auth);
 }
 

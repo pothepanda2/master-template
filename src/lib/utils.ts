@@ -13,6 +13,12 @@ export function formatInr(amount: number): string {
   }).format(amount);
 }
 
+export function formatInrAmount(amount: number): string {
+  return new Intl.NumberFormat("en-IN", {
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
 export function whatsappHref(digits: string, text?: string): string {
   const phone = digits.replace(/\D/g, "");
   const url = `https://wa.me/${phone}`;

@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { MenuExperience } from "@/components/MenuExperience";
 import { loadPublishedMenu } from "@/lib/menu-actions";
+import { themeColorMeta } from "@/lib/theme";
 
 export const Route = createFileRoute("/")({
   loader: () => loadPublishedMenu(),
@@ -15,7 +16,13 @@ export const Route = createFileRoute("/")({
           loaderData?.settings.tagline ??
           "Scan the table QR and browse the menu.",
       },
-      { name: "theme-color", content: "#050605" },
+      {
+        name: "theme-color",
+        content: themeColorMeta(
+          loaderData?.settings.themeId,
+          loaderData?.settings.accentColor,
+        ),
+      },
     ],
   }),
   component: Home,

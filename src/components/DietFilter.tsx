@@ -1,49 +1,34 @@
-import type { DietFilter as DietFilterValue } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-const OPTIONS: { id: DietFilterValue; label: string }[] = [
-  { id: "all", label: "All" },
-  { id: "veg", label: "Veg" },
-  { id: "nonveg", label: "Non-veg" },
-];
-
-export function DietFilter({
-  value,
-  onChange,
+export function VegButton({
+  active,
+  onClick,
 }: {
-  value: DietFilterValue;
-  onChange: (value: DietFilterValue) => void;
+  active: boolean;
+  onClick: () => void;
 }) {
   return (
-    <div
-      role="tablist"
-      aria-label="Diet filter"
-      className="grid grid-cols-3 gap-1 rounded-md bg-surface-2 p-1 shadow-[var(--shadow-border)]"
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={cn(
+        "inline-flex h-11 shrink-0 items-center gap-1.5 rounded-md px-3.5 text-sm font-semibold transition-colors duration-150",
+        active
+          ? "bg-veg text-lime-fg"
+          : "bg-surface text-fg shadow-[var(--shadow-border)] hover:text-fg",
+      )}
     >
-      {OPTIONS.map((option) => {
-        const active = option.id === value;
-        return (
-          <button
-            key={option.id}
-            type="button"
-            role="tab"
-            aria-selected={active}
-            onClick={() => onChange(option.id)}
-            className={cn(
-              "min-h-10 rounded-sm px-2 text-sm font-semibold transition-colors duration-150",
-              active
-                ? option.id === "veg"
-                  ? "bg-veg text-lime-fg"
-                  : option.id === "nonveg"
-                    ? "bg-nonveg text-fg"
-                    : "bg-lime text-lime-fg"
-                : "text-muted hover:text-fg",
-            )}
-          >
-            {option.label}
-          </button>
-        );
-      })}
-    </div>
+      <span
+        className={cn(
+          "inline-flex size-3.5 items-center justify-center rounded-[2px] border-2 bg-transparent",
+          active ? "border-lime-fg" : "border-veg",
+        )}
+        aria-hidden="true"
+      >
+        <span className={cn("size-1.5 rounded-full", active ? "bg-lime-fg" : "bg-veg")} />
+      </span>
+      Veg
+    </button>
   );
 }
