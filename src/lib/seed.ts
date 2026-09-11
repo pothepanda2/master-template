@@ -11,7 +11,6 @@ export const SEED_MENU: MenuContent = {
     _type: "restaurantSettings",
     name: "The Hashtag Cafe",
     tagline: "All-day café · Nagole, Hyderabad",
-    logo: "/logo.svg",
     whatsappNumber: "917997111179",
     address:
       "3-76-B, New Nagole Main Rd, Maa Residency, New Nagole Colony, Kothapet, Hyderabad, Telangana 500035",

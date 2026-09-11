@@ -1,5 +1,6 @@
 import { Clock, MapPin } from "lucide-react";
 import { InstagramButton } from "@/components/InstagramButton";
+import { isVisibleLogo } from "@/lib/logo-image";
 import type { RestaurantSettings } from "@/lib/types";
 
 function shortPlace(address?: string) {
@@ -14,7 +15,7 @@ function shortPlace(address?: string) {
 }
 
 export function Header({ settings }: { settings: RestaurantSettings }) {
-  const customLogo = Boolean(settings.logo && !settings.logo.endsWith(".svg"));
+  const showLogo = isVisibleLogo(settings.logo);
   const place = shortPlace(settings.address);
   const showPlace =
     Boolean(place) &&
@@ -26,18 +27,16 @@ export function Header({ settings }: { settings: RestaurantSettings }) {
     <header className="bg-transparent pt-[env(safe-area-inset-top)]">
       <div className="mx-auto flex max-w-3xl flex-col items-center px-4 pt-7 pb-5 text-center">
         <a href="#menu" className="flex flex-col items-center">
-          {customLogo ? (
+          {showLogo ? (
             <img
               src={settings.logo}
               alt=""
               width={112}
               height={112}
-              className="mb-3 size-28 rounded-xl object-cover shadow-[var(--shadow-border)] outline outline-1 -outline-offset-1 outline-fg/10"
+              className="mb-3 size-28 rounded-xl bg-surface object-contain p-2 shadow-[var(--shadow-border)] outline outline-1 -outline-offset-1 outline-fg/10"
             />
-          ) : (
-            <span className="font-display text-6xl leading-none font-semibold text-lime">#</span>
-          )}
-          <span className="mt-2 block font-display text-3xl leading-tight font-semibold tracking-tight text-fg">
+          ) : null}
+          <span className="block font-display text-3xl leading-tight font-semibold tracking-tight text-fg">
             {settings.name}
           </span>
           {settings.tagline ? (

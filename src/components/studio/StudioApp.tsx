@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { DietBadge } from "@/components/DietBadge";
 import { CsvTools } from "@/components/studio/CsvTools";
+import { LogoField } from "@/components/studio/LogoField";
 import { PasswordLock } from "@/components/studio/PasswordLock";
 import { ThemePicker } from "@/components/studio/ThemePicker";
 import { ThemeApplier } from "@/components/ThemeApplier";
@@ -951,13 +952,7 @@ function CafePanel({
           onChange={(e) => patch({ instagramUrl: e.target.value })}
         />
       </Field>
-      <Field label="Logo URL">
-        <input
-          className={inputClass}
-          value={settings.logo ?? ""}
-          onChange={(e) => patch({ logo: e.target.value })}
-        />
-      </Field>
+      <LogoField value={settings.logo} onChange={(logo) => patch({ logo })} />
 
       <ThemePicker
         themeId={settings.themeId}

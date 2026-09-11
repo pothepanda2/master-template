@@ -89,9 +89,7 @@ export function PasswordLock({
             </p>
           ) : (
             <p className="text-center text-xs text-subtle">
-              {mode === "setup"
-                ? "At least 4 characters. A 4-digit PIN from before still works."
-                : "A 4-digit PIN from before still works."}
+              At least 4 characters.
             </p>
           )}
 

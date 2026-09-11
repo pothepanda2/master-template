@@ -1,66 +1,53 @@
-# Café QR digital menu
+# Master template — café QR menu
 
-A table QR menu website. Guests land on the **menu** — search, diet filters, sticky category tabs, WhatsApp. Café owners edit everything in **Menu Studio** (`/studio`). There is no separate CMS.
+Reusable table-QR menu. Guests open the **menu**. The café team edits in **Menu Studio** (`/studio`) and taps **Publish**. No other CMS.
 
-Sample content is **The Hashtag Cafe** (Nagole, Hyderabad). Components never hardcode the café name; only seed / Studio content does. Duplicate this repo, change content in Studio (or `src/lib/seed.ts`), and it is a new café.
+Sample dishes are **The Hashtag Cafe**. Names live in seed / Studio only — duplicate this template, change content, deploy.
 
 ## Pages
 
 | Path | What it is |
 | --- | --- |
-| `/` | Digital menu (the product) |
-| `/studio` | Café-owner editor: settings, categories, items grouped by category, veg / non-veg preview |
-
-No marketing pages.
+| `/` | Guest menu |
+| `/studio` | Owner editor (password) |
 
 ## How edits go live
 
 1. Open Menu Studio
-2. First visit: set a password (only the café team should know it)
-3. Add or edit dishes, then tap **Publish**
-4. Every table QR shows the new menu
+2. First visit: set a password
+3. Edit café, dishes, theme, or import CSV
+4. Tap **Publish**
 
-Nothing goes live until you publish. The live site store is the source of truth. Until the first publish, the site shows the seed menu.
+Tables keep the last published menu until you publish again.
 
-## Content model
+## Studio
 
-Defined in [`src/lib/types.ts`](src/lib/types.ts), seeded in [`src/lib/seed.ts`](src/lib/seed.ts):
+- **Dishes** — add, edit, hide, CSV export / add-update import (`public/menu-template.csv` is a blank sheet)
+- **Categories** — sections on the menu
+- **Café** — name, WhatsApp, address, hours, Instagram, optional logo upload (JPG/PNG/WebP, 6 MB), theme + accent
 
-1. **Settings** — name, tagline, logo, WhatsApp number, address, Google Maps URL, hours, Instagram
-2. **Category** — title, slug, order
-3. **Item** — name, slug, category, price (INR), description, diet (`veg` \| `nonveg` \| `vegan` \| `egg`), image, available, featured, order
+Logo is optional. Without one, the menu shows the café name only.
 
 ## Duplicate for a new café
 
-1. Clone / copy this repo
+1. Copy this repo
 2. Open `/studio` (or edit `src/lib/seed.ts`)
-3. Change name, WhatsApp (digits with country code, e.g. `91XXXXXXXXXX`), address, maps URL, hours
-4. Replace categories and items
-5. Deploy. Do not change component code.
+3. Change name, WhatsApp (`91XXXXXXXXXX`), address, maps, hours
+4. Replace dishes (or import CSV)
+5. Upload a logo if you have one
+6. Pick a theme, then Publish
 
 ## GitHub
 
-```bash
-git init
-git add .
-git commit -m "Café QR digital menu"
-git branch -M main
-git remote add origin git@github.com:YOUR_ORG/YOUR_REPO.git
-git push -u origin main
-```
+https://github.com/pothepanda2/master-template
 
-## Deploy on Netlify
+## Netlify
 
-1. Push the repo to GitHub
-2. New Netlify site from that repo
-3. Build command: `npm run build`
-4. Publish directory: `dist`
-5. Trigger a deploy
+https://qr-menu-master-template.netlify.app
+
+Build: `npm run build`  
+Publish directory: `dist`
 
 ## WhatsApp
 
-Only WhatsApp is exposed. Number must be digits with country code (`91XXXXXXXXXX`). There is no call button.
-
-## Design
-
-Dark café: black field, lime prices and tabs, red for non-veg, WhatsApp green only on chat buttons. Mobile-first, 44px tap targets, large INR prices.
+WhatsApp only. Number is digits with country code. No call button.
