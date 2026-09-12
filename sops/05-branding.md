@@ -24,7 +24,11 @@ Square-ish works best (about 400×400). Busy full-store photos look muddy at sma
 
 Café → **Remove** on the logo → **Publish**. Header goes back to name only.
 
-Dish photos are still URL-only (or CSV `image` column). Only the **café logo** has a file picker.
+## Dish photos
+
+Open the dish in Studio → **Choose**. JPG, PNG or WebP, **max 4 MB**. We shrink it to a small thumbnail so the menu stays fast.
+
+CSV `image` can still be a public photo URL if you are importing a sheet.
 
 ## Theme
 

@@ -1,13 +1,16 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { env } from "@/lib/env.server";
 import { SEED_MENU } from "@/lib/seed";
+import { HASHTAG_DEMO_MENU } from "@/lib/seed-hashtag";
 import { isMenuContent, type MenuContent } from "@/lib/types";
 
 const FILE_PATH = join(process.cwd(), "data", "menu.json");
 const BLOB_STORE = "qr-menu";
-const BLOB_KEY = "content";
+const BLOB_KEY = "content-v2";
 
-function cloneSeed(): MenuContent {
+function cloneDefaultSeed(): MenuContent {
+  if (env("MENU_SEED") === "hashtag") return structuredClone(HASHTAG_DEMO_MENU);
   return structuredClone(SEED_MENU);
 }
 
@@ -70,10 +73,12 @@ export async function readPublishedMenu(): Promise<MenuContent> {
   const fromBlob = await readBlobMenu();
   if (fromBlob) return fromBlob;
 
+  if (env("MENU_SEED") === "hashtag") return cloneDefaultSeed();
+
   const fromFile = await readFileMenu();
   if (fromFile) return fromFile;
 
-  return cloneSeed();
+  return cloneDefaultSeed();
 }
 
 export async function writePublishedMenu(content: MenuContent): Promise<void> {

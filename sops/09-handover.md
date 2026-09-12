@@ -8,7 +8,7 @@
 - [ ] New repo + new Netlify site (not the master demo)
 - [ ] Guest URL works on your phone
 - [ ] Studio URL works
-- [ ] Sample Hashtag Cafe content is gone
+- [ ] Sample **The Cafe Store** name / placeholder WhatsApp / placeholder address is gone
 - [ ] Real name, WhatsApp, address, hours, maps
 - [ ] Categories match the kitchen
 - [ ] Prices in ₹ match the printed/laminated list if they have one
@@ -25,7 +25,7 @@
 3. Together: change one price → **Publish** → refresh a second phone.
 4. Together: mark one dish unavailable → Publish → confirm “Not available”.
 5. Show lock icon.
-6. Show Café tab (hours, WhatsApp) and warn that Reset to sample is dangerous.
+6. Show Café tab (hours, WhatsApp) and warn that **Reset to The Cafe Store** / **Load Hashtag Cafe demo** replaces the draft.
 7. Send files:
 
    **Message 1 — links**

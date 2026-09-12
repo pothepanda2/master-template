@@ -61,6 +61,8 @@ Blank template: `public/menu-template.csv` in the repo. Example: `examples/cafe-
 
 CSV cannot attach files from the phone. The `image` cell must be a link that opens the picture itself. WhatsApp / Drive / Instagram page links usually fail.
 
+For photos from the phone, use the dish **Choose** button in Studio (max 4 MB) instead of CSV.
+
 Logo is **not** in the CSV. Use Café → Choose logo (SOP-05).
 
 ## Do not

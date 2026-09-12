@@ -1,20 +1,22 @@
 import type { MenuContent } from "@/lib/types";
 
 /**
- * Copy-from template seed. Components never hardcode this café —
- * they only read MenuContent. Duplicate the repo, change this in Studio, Publish.
- *
- * Demo café (The Hashtag Cafe) lives in seed-hashtag.ts.
+ * Demo café only — The Hashtag Cafe (Nagole).
+ * The copy-from template seed is `SEED_MENU` in seed.ts (The Cafe Store).
+ * Load this from Studio → Café → Load Hashtag Cafe demo, or set MENU_SEED=hashtag
+ * on a separate demo deploy.
  */
-export const SEED_MENU: MenuContent = {
+export const HASHTAG_DEMO_MENU: MenuContent = {
   settings: {
     _id: "restaurantSettings",
     _type: "restaurantSettings",
-    name: "The Cafe Store",
-    tagline: "All-day café · sample menu",
-    whatsappNumber: "911234567890",
-    address: "Your café address — replace in Menu Studio",
-    hours: "10:00 AM – 10:00 PM · Open all week",
+    name: "The Hashtag Cafe",
+    tagline: "All-day café · Nagole, Hyderabad",
+    whatsappNumber: "917997111179",
+    address:
+      "3-76-B, New Nagole Main Rd, Maa Residency, New Nagole Colony, Kothapet, Hyderabad, Telangana 500035",
+    googleMapsUrl: "https://maps.app.goo.gl/C5mkC752EMzRa5Nk7?g_st=ic",
+    hours: "11:30 AM – 11:00 PM · Open all week",
   },
   categories: [
     { _id: "cat-pizza", _type: "menuCategory", title: "Pizza", slug: "pizza", order: 1 },

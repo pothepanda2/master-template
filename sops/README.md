@@ -1,8 +1,10 @@
 # QR menu SOP pack
 
-Standard operating procedures for the **master template** café QR menu.
+Standard operating procedures for **The Cafe Store** master template.
 
 Give café staff the **owner pack**. Keep the **agency pack** for you when launching a new client.
+
+**The Hashtag Cafe** is a demo, not the template. Do not copy a live Hashtag deploy as a new client.
 
 | Who | Start here |
 | --- | --- |
@@ -15,10 +17,10 @@ Give café staff the **owner pack**. Keep the **agency pack** for you when launc
 | SOP | Use when |
 | --- | --- |
 | [Quick card](./cafe-owner-quick-card.md) | First handover. One page. |
-| [02 Studio daily](./02-studio-daily.md) | Add, edit, hide dishes; change prices |
+| [02 Studio daily](./02-studio-daily.md) | Add, edit, hide dishes; change prices; dish photos |
 | [03 Publish](./03-publish.md) | Making tables see the change |
 | [04 CSV](./04-csv.md) | Bulk price or menu dump from a sheet |
-| [05 Branding](./05-branding.md) | Logo, theme, accent, Instagram |
+| [05 Branding](./05-branding.md) | Logo, dish photos, theme, accent, Instagram |
 | [06 Password](./06-password.md) | Lock, unlock, change password |
 
 ## Agency pack (you only)
@@ -31,10 +33,10 @@ Give café staff the **owner pack**. Keep the **agency pack** for you when launc
 | [08 Troubleshooting](./08-troubleshooting.md) | Something looks wrong |
 | [09 Handover checklist](./09-handover.md) | Go-live with the café |
 
-## Live demo (master template)
+## Live URLs
 
-- Guest menu: https://qr-menu-master-template.netlify.app
-- Menu Studio: https://qr-menu-master-template.netlify.app/studio
+- Template (copy this): https://qr-menu-master-template.netlify.app
+- Studio: https://qr-menu-master-template.netlify.app/studio
 - GitHub: https://github.com/pothepanda2/master-template
 
 Do **not** put this SOP folder on the café’s guest menu. Staff use Studio; guests only see `/`.

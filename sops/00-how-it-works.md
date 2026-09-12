@@ -30,7 +30,7 @@ One published copy of:
 - Café name, tagline, WhatsApp, address, maps, hours, Instagram
 - Optional logo
 - Theme + accent colour
-- Categories and dishes (name, price, diet, photo URL, available, featured)
+- Categories and dishes (name, price, diet, photo, available, featured)
 
 Plus a separate lock:
 

@@ -15,11 +15,13 @@ import {
 } from "lucide-react";
 import { DietBadge } from "@/components/DietBadge";
 import { CsvTools } from "@/components/studio/CsvTools";
+import { DishPhotoField } from "@/components/studio/DishPhotoField";
 import { LogoField } from "@/components/studio/LogoField";
 import { PasswordLock } from "@/components/studio/PasswordLock";
 import { ThemePicker } from "@/components/studio/ThemePicker";
 import { ThemeApplier } from "@/components/ThemeApplier";
 import { cloneSeed, saveContent } from "@/lib/content";
+import { HASHTAG_DEMO_MENU } from "@/lib/seed-hashtag";
 import {
   changeStudioPassword,
   checkStudioToken,
@@ -330,6 +332,10 @@ export function StudioApp() {
               patchDraft(next);
               setEditingId(null);
             }}
+            onLoadDemo={() => {
+              patchDraft(structuredClone(HASHTAG_DEMO_MENU));
+              setEditingId(null);
+            }}
           />
         ) : null}
       </div>
@@ -488,6 +494,13 @@ function MenuPanel({
                       !item.available && "opacity-60",
                     )}
                   >
+                    {item.image ? (
+                      <img
+                        src={item.image}
+                        alt=""
+                        className="size-10 shrink-0 rounded-md object-cover"
+                      />
+                    ) : null}
                     <DietBadge diet={item.dietType} />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-semibold">
@@ -676,14 +689,10 @@ function DishEditor({
           onChange={(e) => onChange({ description: e.target.value })}
         />
       </Field>
-      <Field label="Photo URL (optional)">
-        <input
-          className={inputClass}
-          value={item.image ?? ""}
-          placeholder="/menu/photo.jpg"
-          onChange={(e) => onChange({ image: e.target.value })}
-        />
-      </Field>
+      <DishPhotoField
+        value={item.image}
+        onChange={(image) => onChange({ image: image || undefined })}
+      />
       <div className="flex gap-2">
         <Toggle
           label={item.available ? "On the menu" : "Hidden"}
@@ -877,6 +886,7 @@ function CafePanel({
   passwordMessage,
   onChangePassword,
   onReset,
+  onLoadDemo,
 }: {
   content: MenuContent;
   onChange: (content: MenuContent) => void;
@@ -884,11 +894,12 @@ function CafePanel({
   passwordMessage: string | null;
   onChangePassword: (password: string) => void;
   onReset: () => void;
+  onLoadDemo: () => void;
 }) {
   const settings = content.settings;
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [confirmReset, setConfirmReset] = useState(false);
+  const [confirmReset, setConfirmReset] = useState<"template" | "demo" | null>(null);
 
   function patch(partial: Partial<RestaurantSettings>) {
     onChange({ ...content, settings: { ...settings, ...partial } });
@@ -1003,35 +1014,52 @@ function CafePanel({
       </div>
 
       {confirmReset ? (
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              onReset();
-              setConfirmReset(false);
-            }}
-            className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-md bg-red px-3 text-sm font-semibold text-lime-fg"
-          >
-            <RotateCcw className="size-4" />
-            Reset sample menu
-          </button>
-          <button
-            type="button"
-            onClick={() => setConfirmReset(false)}
-            className="inline-flex min-h-11 flex-1 items-center justify-center rounded-md bg-surface px-3 text-sm font-semibold shadow-[var(--shadow-border)]"
-          >
-            Cancel
-          </button>
+        <div className="flex flex-col gap-2">
+          <p className="text-sm text-muted">
+            {confirmReset === "demo"
+              ? "Load The Hashtag Cafe demo? This replaces your draft. Publish to send it to tables."
+              : "Reset to The Cafe Store template? This replaces your draft. Publish to send it to tables."}
+          </p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                if (confirmReset === "demo") onLoadDemo();
+                else onReset();
+                setConfirmReset(null);
+              }}
+              className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-md bg-red px-3 text-sm font-semibold text-lime-fg"
+            >
+              <RotateCcw className="size-4" />
+              {confirmReset === "demo" ? "Load demo" : "Reset template"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmReset(null)}
+              className="inline-flex min-h-11 flex-1 items-center justify-center rounded-md bg-surface px-3 text-sm font-semibold shadow-[var(--shadow-border)]"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       ) : (
-        <button
-          type="button"
-          onClick={() => setConfirmReset(true)}
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md text-sm font-semibold text-muted hover:text-fg"
-        >
-          <RotateCcw className="size-4" />
-          Reset to sample menu
-        </button>
+        <div className="flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={() => setConfirmReset("template")}
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md text-sm font-semibold text-muted hover:text-fg"
+          >
+            <RotateCcw className="size-4" />
+            Reset to The Cafe Store
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirmReset("demo")}
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md text-sm font-semibold text-muted hover:text-fg"
+          >
+            Load Hashtag Cafe demo
+          </button>
+        </div>
       )}
     </div>
   );

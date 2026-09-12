@@ -40,9 +40,17 @@ They opened `/studio`. Reprint the QR with the site root only (SOP-07).
 
 No logo is valid. Name-only header is correct.
 
-## Dish photo not showing
+## Dish photo rejected or missing
 
-Dish images are **URLs**, not phone uploads. The link must open the image itself (`.jpg` / `.png` / `.webp`).  
+- File must be JPG, PNG, or WebP (not PDF; iPhone HEIC — convert to JPG).
+- **Max 4 MB** for dishes (logo is 6 MB).
+- CSV images still need a public URL that opens the picture itself.
+
+## Dish photo not showing from CSV
+
+CSV cannot attach phone files. The `image` cell must be a public URL that opens the picture (`.jpg` / `.png` / `.webp`).  
+For a photo on the phone, open the dish in Studio and tap **Choose**.
+
 WhatsApp, Drive “share” links, and Instagram posts usually fail.
 
 ## CSV import skipped rows
@@ -63,11 +71,11 @@ You changed Café but did not Publish. Instagram buttons appear only when a URL 
 
 ## WhatsApp opens the wrong number
 
-Café tab: digits with country code, no `+` needed, e.g. `917997111179`. Publish.
+Café tab: digits with country code, no `+` needed, e.g. `91XXXXXXXXXX`. Publish.
 
-## Sample Hashtag Cafe dishes came back
+## The Cafe Store sample came back
 
-Someone used **Reset to sample** and Published. Restore from a CSV export if you have one. Always Export CSV before a bulk replace or reset.
+Someone used **Reset to The Cafe Store** (or loaded the Hashtag demo) and Published. Restore from a CSV export if you have one. Always Export CSV before a bulk replace or reset.
 
 ## Site is down
 

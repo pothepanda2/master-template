@@ -25,7 +25,7 @@ If you stay logged in, you usually will not need the password again for about 12
 4. Type the price in rupees (numbers only).
 5. Short description if you have one.
 6. Set diet: Veg / Non-veg / Vegan / Egg.
-7. Optional: paste a photo URL. Logo upload is only for the café logo, not dishes.
+7. Optional: **Choose** a photo from the phone (JPG/PNG/WebP, **max 4 MB**). It is shrunk for the menu.
 8. Leave **Available** on unless it is sold out.
 9. Tap **Publish**.
 
@@ -78,4 +78,4 @@ Then open the **guest menu** (not Studio) on a phone and spot-check one price.
 ## Do not
 
 - Do not edit on a guest’s phone and walk away without locking (lock icon in the header).
-- Do not tap **Reset to sample** unless you want the demo dishes back — and even then you must Publish for it to hit tables.
+- Do not tap **Reset to The Cafe Store** or **Load Hashtag Cafe demo** unless you mean to replace the whole draft — and even then you must Publish for it to hit tables.

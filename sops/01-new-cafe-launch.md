@@ -38,7 +38,7 @@
    Match their real sections (Pizza, Biryani, etc.). Delete sample ones they do not use.
 
 6. **Dishes**  
-   Either enter by hand, or import CSV (SOP-04).  
+   Either enter by hand (optional **Choose** photo, max 4 MB), or import CSV (SOP-04).  
    Mark sold-out items unavailable instead of deleting if they come back.
 
 7. **Publish**  
@@ -58,4 +58,5 @@
 - Do not reuse the master-template Netlify URL for a paying client.
 - Do not print `/studio` on table tents.
 - Do not skip Publish.
-- Do not leave the sample Hashtag Cafe name, WhatsApp, or dishes live.
+- Do not leave **The Cafe Store** sample name, `911234567890`, or “Your café address” live.
+- Do not copy a Hashtag Cafe demo site as the client — copy the **master template**.
