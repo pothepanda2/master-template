@@ -28,6 +28,14 @@ Tables keep the last published menu until you publish again.
 
 Logo is optional. Without one, the menu shows the café name only.
 
+## SOPs
+
+Printable operating procedures for you and for café owners:
+
+**[sops/README.md](./sops/README.md)**
+
+Start with [café owner quick card](./sops/cafe-owner-quick-card.md) at handover, and [SOP-01 Launch a new café](./sops/01-new-cafe-launch.md) when duplicating this template.
+
 ## Duplicate for a new café
 
 1. Copy this repo
@@ -36,6 +44,8 @@ Logo is optional. Without one, the menu shows the café name only.
 4. Replace dishes (or import CSV)
 5. Upload a logo if you have one
 6. Pick a theme, then Publish
+
+Full steps: [sops/01-new-cafe-launch.md](./sops/01-new-cafe-launch.md).
 
 ## GitHub
 
