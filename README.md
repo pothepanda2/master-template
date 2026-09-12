@@ -53,8 +53,8 @@ https://github.com/pothepanda2/master-template
 
 ## Netlify
 
-- Template: https://qr-menu-master-template.netlify.app
-- Hashtag demo (if deployed): set `MENU_SEED=hashtag` on that site
+- Template (copy this): https://qr-menu-master-template.netlify.app
+- Hashtag Cafe demo: https://hashtag-cafe-demo.netlify.app (`MENU_SEED=hashtag`)
 
 Build: `npm run build`  
 Publish directory: `dist`

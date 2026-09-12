@@ -36,7 +36,7 @@ Give café staff the **owner pack**. Keep the **agency pack** for you when launc
 ## Live URLs
 
 - Template (copy this): https://qr-menu-master-template.netlify.app
-- Studio: https://qr-menu-master-template.netlify.app/studio
+- Hashtag Cafe demo: https://hashtag-cafe-demo.netlify.app
 - GitHub: https://github.com/pothepanda2/master-template
 
 Do **not** put this SOP folder on the café’s guest menu. Staff use Studio; guests only see `/`.
